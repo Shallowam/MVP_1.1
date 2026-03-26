@@ -31,6 +31,11 @@ const ZONES = {
   monstre: { minX: 750, maxX: 1100, minY: 100, maxY: 575 }
 };
 
+const SKINS = {
+  pirate: ["Perso1", "Perso2", "Perso3", "Perso4", "Perso5", "Perso6", "Perso7", "Perso8", "Perso9", "Perso10"],
+  monstre: ["M1", "M3", "M4"]
+};
+
 const SPEED = 18; 
 const GAME_DURATION = 10 * 60 * 1000; 
 const RESTART_DELAY = 30 * 1000; 
@@ -53,8 +58,8 @@ const APPLE_TELEPORT_DURATION  = 15 * 1000;
 const LINE_TRAP_DURATION       = 3 * 1000;    
 const LINE_TRAP_TOLERANCE      = 40;          
 const PASSERELLES = [
-  { y: 150, height: 120 }, 
-  { y: 525, height: 120 }, 
+  { y: 240, height: 120 }, 
+  { y: 440, height: 120 }, 
 ];
 
 // =============================================================================
@@ -587,9 +592,10 @@ wss.on("connection", (ws) => {
       const countMonstre  = Object.values(players).filter(p => p.team === "monstre").length;
       const assignedTeam = countPirate <= countMonstre ? "pirate" : "monstre";
       const z = ZONES[assignedTeam];
+      const skinId = SKINS[assignedTeam][Math.floor(Math.random() * SKINS[assignedTeam].length)];
 
       players[id] = {
-        id, pseudo: data.pseudo || "Anonyme", team: assignedTeam,
+        id, pseudo: data.pseudo || "Anonyme", team: assignedTeam, skinId: skinId,
         x: Math.floor(Math.random() * (z.maxX - z.minX)) + z.minX,
         y: Math.floor(Math.random() * (z.maxY - z.minY)) + z.minY,
         hitCount: 0,

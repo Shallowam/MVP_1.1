@@ -15,60 +15,123 @@
 
 body {
   background: #07bbdf;
-  overflow: hidden; /* Pas de scrollbar */
+  overflow: hidden;
+  /* Pas de scrollbar */
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 /* =============================================================================
-   HUD (Head-Up Display)
-   Barre d'info fixee en haut de l'ecran : score rouge | timer | score bleu
+   NOUVELLE UI / OVERLAYS
    ============================================================================= */
 
-#hud {
+#ui-layer {
   position: fixed;
-  top: 1.5rem;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+#ui-logo-container {
+  position: absolute;
+  top: -10px;
   left: 50%;
-  transform: translateX(-50%); /* Centrer horizontalement */
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#ui-logo {
+  width: 35vw;
+  max-width: 500px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  z-index: 2;
+}
+
+.ui-banniere {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.banniere-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 0;
+}
+
+#ui-score-pirate {
+  top: 2vw;
+  left: -1vw;
+  width: 25vw;
+  height: 8vw;
+}
+#ui-score-pirate .score-text {
+  position: relative;
+  z-index: 1;
+  font-family: "Impact", sans-serif;
+  font-size: 2vw;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 2px 2px 0px #ab4f18, -2px -2px 0 #ab4f18, 2px -2px 0 #ab4f18, -2px 2px 0 #ab4f18;
   display: flex;
   align-items: center;
-  gap: 2rem;
-  z-index: 1000; /* Au-dessus de l'arène plein écran */
+  gap: 1.5vw;
+  padding-left: 2vw;
+  letter-spacing: 2px;
+}
+#ui-score-pirate .score-number {
+  color: #fff;
 }
 
-/* Bloc de score d'une equipe */
-.hud-team {
+#ui-score-monstre {
+  top: 2vw;
+  right: -1vw;
+  width: 28vw;
+  height: 8vw;
+}
+#ui-score-monstre .score-text {
+  position: relative;
+  z-index: 1;
+  font-family: "Impact", sans-serif;
+  font-size: 2vw;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 2px 2px 0px #ab4f18, -2px -2px 0 #ab4f18, 2px -2px 0 #ab4f18, -2px 2px 0 #ab4f18;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #eee;
-  background: #1a1a2ecc; /* Fond semi-transparent */
-  padding: 0.5rem 1.25rem;
-  border-radius: 12px;
-  backdrop-filter: blur(8px); /* Effet de flou derriere */
+  gap: 1.5vw;
+  padding-right: 2vw;
+  letter-spacing: 2px;
 }
 
-/* Compteur de morts dans le HUD */
-.hud-deaths {
-  margin-left: 0.5rem;
-  opacity: 0.75;
-  font-size: 1rem;
+#ui-timer {
+  position: relative;
+  margin-top: -30px;
+  width: 16vw;
+  height: 6vw;
+  z-index: 1;
 }
-
-/* Timer au centre du HUD */
-#timer {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #eee;
-  background: #1a1a2ecc;
-  padding: 0.4rem 1.5rem;
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
-  font-variant-numeric: tabular-nums; /* Chiffres a largeur fixe (pas de "saut") */
+.timer-text {
+  position: relative;
+  z-index: 1;
+  font-size: 2.2vw;
+  font-weight: 900;
+  color: #fff;
+  font-family: "Impact", sans-serif;
+  text-shadow: 2px 2px 0px #5e260a, -1px -1px 0 #5e260a, 1px -1px 0 #5e260a, -1px 1px 0 #5e260a;
+  letter-spacing: 2px;
+  margin-bottom: 0.5vw;
 }
-
-/* Timer en mode urgent : rouge + clignotant (derniers 30 secondes) */
 #timer.urgent {
   color: #e94560;
   animation: pulse 1s infinite;
@@ -77,21 +140,6 @@ body {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
-}
-
-/* Petit rond colore a cote du nom d'equipe */
-.team-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.team-dot.rouge {
-  background: #e94560;
-}
-
-.team-dot.bleu {
-  background: #4ea8de;
 }
 
 /* =============================================================================
@@ -108,7 +156,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #000; /* Barres noires si ratio ne correspond pas */
+  background: #000;
+  /* Barres noires si ratio ne correspond pas */
 }
 
 /* L'arene elle-meme : 1200x675, agrandie/reduite via transform: scale() */
@@ -125,35 +174,96 @@ body {
 /* Couches de Décor du Fond Marin */
 #bg-sea {
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  z-index: 0; /* Tout en bas, sous les joueurs */
+  z-index: 0;
+  /* Tout en bas, sous les joueurs */
 }
 
 #bg-islands {
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  pointer-events: none; /* Laisse passer les clics au besoin */
-  z-index: 1; /* Sous les joueurs, sur l'océan */
+  pointer-events: none;
+  /* Laisse passer les clics au besoin */
+  z-index: 1;
+  /* Sous les joueurs, sur l'océan */
 }
 
 /* Passerelles sur la ligne centrale (ouvertes pendant l'abordage) */
 .passerelle {
   position: absolute;
-  left: calc(50% - 10px);
-  width: 20px;
-  background: rgba(255, 200, 0, 0.25);
-  border-left: 3px solid rgba(255, 200, 0, 0.6);
-  border-right: 3px solid rgba(255, 200, 0, 0.6);
+  left: calc(50% - 130px);
+  /* Centered based on 260px width */
+  width: 260px;
+  /* Increased to maintain proportion with pont.png (2216x1017) */
+  background-color: transparent;
+  background-image: url('ui/pont.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  outline: none;
   pointer-events: none;
   z-index: 2;
+  /* L'animation se déclenchera à chaque fois que la classe .hidden sera retirée */
+  animation: bridge-appear 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
 }
 
-#passerelle-top    { top: 73px;  height: 120px; }
-#passerelle-bottom { top: 607px; height: 120px; }
+@keyframes bridge-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(-30px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* On rapproche les passerelles du centre (l'arène fait 675px de haut, le centre est à ~337px) */
+#passerelle-top {
+  top: 180px;
+  height: 120px;
+  animation-name: bridge-appear-top;
+}
+
+#passerelle-bottom {
+  top: 380px;
+  height: 120px;
+  animation-name: bridge-appear-bottom;
+}
+
+@keyframes bridge-appear-top {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bridge-appear-bottom {
+  0% {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* Banniere ABORDAGE ! */
 #abordage-banner {
@@ -164,7 +274,7 @@ body {
   font-size: 2.5rem;
   font-weight: 900;
   color: #ffd700;
-  text-shadow: 0 0 20px orange, 0 2px 8px rgba(0,0,0,0.8);
+  text-shadow: 0 0 20px orange, 0 2px 8px rgba(0, 0, 0, 0.8);
   z-index: 20;
   pointer-events: none;
   animation: pulse 0.8s infinite;
@@ -180,13 +290,11 @@ body {
   transform: translateX(-50%);
   width: 4px;
   height: 100%;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.2) 0px,
-    rgba(255,255,255,0.2) 16px,
-    transparent 16px,
-    transparent 32px
-  );
+  background: repeating-linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.2) 0px,
+      rgba(255, 255, 255, 0.2) 16px,
+      transparent 16px,
+      transparent 32px);
   pointer-events: none;
   z-index: 1;
 }
@@ -218,7 +326,8 @@ body {
 /* Message "En attente de joueurs..." affiche quand personne n'est connecte */
 #waiting {
   position: absolute;
-  inset: 0; /* Raccourci pour top:0 right:0 bottom:0 left:0 */
+  inset: 0;
+  /* Raccourci pour top:0 right:0 bottom:0 left:0 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -241,7 +350,8 @@ body {
   align-items: center;
   /* Transition fluide du mouvement (80ms = temps entre 2 envois de position) */
   transition: left 0.05s linear, top 0.05s linear;
-  pointer-events: none; /* Ne bloque pas les clics */
+  pointer-events: none;
+  /* Ne bloque pas les clics */
 }
 
 /* Le cercle du joueur */
@@ -267,7 +377,8 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
   color: #eee;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); /* Ombre pour lisibilite */
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  /* Ombre pour lisibilite */
   white-space: nowrap;
 }
 
@@ -285,7 +396,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100; /* Par-dessus tout, y compris le HUD */
+  z-index: 100;
+  /* Par-dessus tout, y compris le HUD */
 }
 
 .overlay.hidden {
@@ -370,14 +482,26 @@ body {
 }
 
 #countdown-image {
-  object-fit: contain; /* The inline style max-height takes care of sizing */
+  object-fit: contain;
+  /* The inline style max-height takes care of sizing */
   animation: countdown-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 @keyframes countdown-pop {
-  0% { transform: scale(0.2); opacity: 0; }
-  60% { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* =============================================================================
@@ -388,7 +512,7 @@ body {
 
 #btn-restart {
   position: fixed;
-  top: 1.5rem;
+  top: 12vw;
   right: 1.5rem;
   background: #1a1a2ecc;
   color: #eee;
@@ -408,36 +532,30 @@ body {
   border-color: #e94560;
 }
 
-#qr-box {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
+#ui-qr-box {
+  bottom: 1vw;
+  right: 1vw;
+  width: 25vw;
+  height: 10vw;
+}
+
+#ui-qr-box .qr-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 0.5rem;
-  background: #1a1a2ecc;
-  padding: 1rem;
-  border-radius: 16px;
-  backdrop-filter: blur(8px);
-  z-index: 1000;
+  padding-right: 1.5vw; /* Adjust mostly to center it on the parchment */
 }
 
 /* Le QR code genere est une balise <img> a l'interieur de cette div */
 #qr-code img {
   display: block;
-  width: 120px;
-  height: 120px;
+  width: 7vw;
+  height: 7vw;
   border-radius: 8px;
-}
-
-#qr-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #eee;
-  opacity: 0.7;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  margin-right: 20px;
 }
 
 /* =============================================================================
@@ -448,21 +566,31 @@ body {
 /* Le conteneur central (le point pivot de l'orbite) */
 .ko-effects {
   position: absolute;
-  top: -10px;   /* Hauteur du centre de l'orbite au-dessus de la tete. Ajuste si besoin. */
-  left: 50%;    /* Centre horizontalement */
-  transform: translateX(-50%); /* Ajustement centrage */
-  width: 0; height: 0; /* Le conteneur lui-meme est un point invisible */
-  z-index: 10;  /* Au-dessus du pseudo */
-  pointer-events: none; /* Ne bloque pas les clics */
+  top: -10px;
+  /* Hauteur du centre de l'orbite au-dessus de la tete. Ajuste si besoin. */
+  left: 50%;
+  /* Centre horizontalement */
+  transform: translateX(-50%);
+  /* Ajustement centrage */
+  width: 0;
+  height: 0;
+  /* Le conteneur lui-meme est un point invisible */
+  z-index: 10;
+  /* Au-dessus du pseudo */
+  pointer-events: none;
+  /* Ne bloque pas les clics */
 }
 
 /* Style commun aux deux etoiles */
 .ko-star {
   position: absolute;
-  width: 20px;  /* Taille d'une etoile */
+  width: 20px;
+  /* Taille d'une etoile */
   height: 20px;
-  top: -10px;   /* Centrer verticalement l'etoile par rapport au pivot */
-  left: -10px;  /* Centrer horizontalement l'etoile par rapport au pivot */
+  top: -10px;
+  /* Centrer verticalement l'etoile par rapport au pivot */
+  left: -10px;
+  /* Centrer horizontalement l'etoile par rapport au pivot */
   /* Animation 'orbit' : 1.5s pour un tour complet, lineaire, infini */
   animation: orbit 1.5s linear infinite;
 }
@@ -475,8 +603,13 @@ body {
 
 /* DEFINITION DE L'ORBITE (Double Rotation) */
 @keyframes orbit {
-  from { transform: rotate(0deg) translateX(30px) rotate(0deg); }
-  to   { transform: rotate(360deg) translateX(30px) rotate(-360deg); }
+  from {
+    transform: rotate(0deg) translateX(30px) rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg) translateX(30px) rotate(-360deg);
+  }
 }
 
 /* =============================================================================
@@ -485,41 +618,55 @@ body {
 
 .gem-container {
   position: absolute;
-  width: 42px;  
+  width: 42px;
   height: 42px;
   transform: translate(-50%, -50%);
   z-index: 5;
-  pointer-events: none; 
+  pointer-events: none;
 }
 
 .gem-halo {
-  display: none; /* Halos supprimés */
+  display: none;
+  /* Halos supprimés */
 }
 
 /* Halos supprimés — classes conservées pour compatibilité JS */
-.halo-bombe, .halo-rouge, .halo-corde { display: none; }
+.halo-bombe,
+.halo-rouge,
+.halo-corde {
+  display: none;
+}
 
 .gem-image {
   position: relative;
   width: 100%;
   height: 100%;
-  object-fit: contain; 
-  z-index: 2; 
+  object-fit: contain;
+  z-index: 2;
 }
 
 .gem-warning {
   pointer-events: none;
 }
+
 .gem-warning .gem-image {
   animation: gemGrayscalePulse 1s infinite alternate;
 }
+
 .gem-warning .gem-halo {
-  opacity: 0.1; 
+  opacity: 0.1;
 }
 
 @keyframes gemGrayscalePulse {
-  from { opacity: 0.3; filter: grayscale(100%); }
-  to   { opacity: 0.7; filter: grayscale(50%); }
+  from {
+    opacity: 0.3;
+    filter: grayscale(100%);
+  }
+
+  to {
+    opacity: 0.7;
+    filter: grayscale(50%);
+  }
 }
 
 .gem-active {
@@ -527,8 +674,15 @@ body {
 }
 
 @keyframes gemFloat {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-  50%      { transform: translate(-50%, -50%) translateY(-20px); } 
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0px);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) translateY(-20px);
+  }
 }
 
 .gem-burst {
@@ -537,45 +691,62 @@ body {
 }
 
 @keyframes gemExplode {
-  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: brightness(2); }
-  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; filter: brightness(1); } 
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    filter: brightness(2);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+    filter: brightness(1);
+  }
 }
+
 /* =============================================================================
    NOUVEAU : VISUELS DES BOMBES LANCÉES & EXPLOSIONS
    ============================================================================= */
 
 .bombe-splash {
   position: absolute;
-  width: 36px; 
+  width: 36px;
   height: 36px;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  z-index: 5; 
+  z-index: 5;
   pointer-events: none;
-  
+
   /* NOUVEAU : Glissade parfaitement fluide sur 1.5s ! */
   transition: left 1.5s linear, top 1.5s linear;
-  
+
   /* NOUVEAU : Rotation très rapide sur elle-même */
   animation: bombe-spin 0.4s linear infinite;
 }
 
 @keyframes bombe-spin {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to   { transform: translate(-50%, -50%) rotate(360deg); }
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
 /* L'élément d'explosion (utilisera explosion.png) */
 .explosion {
   position: absolute;
-  transform: translate(-50%, -50%); /* Centré parfaitement */
+  transform: translate(-50%, -50%);
+  /* Centré parfaitement */
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  z-index: 6; /* Au-dessus de tout */
+  z-index: 6;
+  /* Au-dessus de tout */
   pointer-events: none;
-  
+
   /* C'est ici qu'on déclenche l'animation */
   animation: explosion-large 1s ease-out forwards;
 }
@@ -583,44 +754,62 @@ body {
 /* L'animation : s'agrandit énormément et disparaît */
 @keyframes explosion-large {
   0% {
-    width: 0px; /* Part du centre (taille 0) */
+    width: 0px;
+    /* Part du centre (taille 0) */
     height: 0px;
-    opacity: 1; /* Bien visible */
+    opacity: 1;
+    /* Bien visible */
   }
+
   50% {
-    opacity: 1; /* Reste visible pendant qu'elle s'agrandit */
+    opacity: 1;
+    /* Reste visible pendant qu'elle s'agrandit */
   }
+
   100% {
-    width: 600px; /* ÉNORME TAILLE (600px !) */
+    width: 600px;
+    /* ÉNORME TAILLE (600px !) */
     height: 600px;
-    opacity: 0; /* Devient totalement transparent à la fin */
+    opacity: 0;
+    /* Devient totalement transparent à la fin */
   }
 }
+
 @keyframes spin-sabre {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
+
 /* =============================================================================
    SABLES MOUVANTS (ZONES DE DANGER AVEC SPRITES)
    ============================================================================= */
 .trap {
   position: absolute;
-  z-index: 2; /* Sous les joueurs */
+  z-index: 2;
+  /* Sous les joueurs */
   pointer-events: none;
-  
+
   /* L'image de sable mouvant utilise la taille définie par le serveur (trap.radius) */
-  background-size: 100% 100%; /* S'adapte à la div "écrasée" */
+  background-size: 100% 100%;
+  /* S'adapte à la div "écrasée" */
   background-position: center;
 }
 
 /* Sprite de sable mouvant pour les Pirates (SMx-pirate.png) */
 .trap.pirate {
-  background-image: url('assets/SM1-pirate.png'); /* Par défaut, SM1 */
+  background-image: url('assets/SM1-pirate.png');
+  /* Par défaut, SM1 */
 }
 
 /* Sprite de sable mouvant pour les Monstres (SMx-monstre.png) */
 .trap.monstre {
-  background-image: url('assets/SM1-monstre.png'); /* Par défaut, SM1 */
+  background-image: url('assets/SM1-monstre.png');
+  /* Par défaut, SM1 */
 }
 
 /* Attaque Requin Géant (Gemme Rouge) */
@@ -644,8 +833,13 @@ body {
 }
 
 @keyframes trap-warning-blink {
-  from { opacity: 1; }
-  to   { opacity: 0.3; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.3;
+  }
 }
 
 /* Animation de clignotement pour le joueur touché */
@@ -654,6 +848,11 @@ body {
 }
 
 @keyframes player-blink {
-  from { opacity: 1; }
-  to   { opacity: 0.2; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.2;
+  }
 }

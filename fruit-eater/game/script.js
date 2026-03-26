@@ -6,12 +6,18 @@ const ws = new WebSocket(`ws://${location.host}`);
 // =============================================================================
 // PRÉCHARGEMENT DES IMAGES (Anti-Lag)
 // =============================================================================
-const imagesToPreload = [
-  "assets/team1/Perso1-Stat.png", "assets/team1/Perso1-move1.png", "assets/team1/Perso1-move2.png",
-  "assets/team1/Perso1-rush1.png", "assets/team1/Perso1-rush2.png", "assets/team1/Perso1-KO.png",
-  "assets/team2/M1-Stat.png", "assets/team2/M1-move1.png", "assets/team2/M1-move2.png",
-  "assets/team2/M1-rush1.png", "assets/team2/M1-rush2.png", "assets/team2/M1-KO.png"
-];
+const imagesToPreload = [];
+const pirateSkins = ["Perso1", "Perso2", "Perso3", "Perso4", "Perso5", "Perso6", "Perso7", "Perso8", "Perso9", "Perso10"];
+const monstreSkins = ["M1", "M3", "M4"];
+const states = ["Stat", "move1", "move2", "rush1", "rush2", "KO"];
+
+pirateSkins.forEach(skin => {
+  states.forEach(state => imagesToPreload.push(`assets/team1/${skin}-${state}.png`));
+});
+monstreSkins.forEach(skin => {
+  states.forEach(state => imagesToPreload.push(`assets/team2/${skin}-${state}.png`));
+});
+
 imagesToPreload.forEach(src => {
   const img = new Image();
   img.src = src;
@@ -144,7 +150,7 @@ ws.addEventListener("message", (event) => {
     ids.forEach((id) => {
       const p = players[id];
       const teamFolder = p.team === 'pirate' ? 'team1' : 'team2';
-      const persoName = p.team === 'pirate' ? 'Perso1' : 'M1';
+      const persoName = p.skinId || (p.team === 'pirate' ? 'Perso1' : 'M1');
       
       // On initialise le joueur s'il n'existe pas
       if (!playerElements[id]) {
