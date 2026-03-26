@@ -13,133 +13,113 @@
   display: none !important;
 }
 
+@font-face {
+  font-family: 'Riking';
+  src: url('fonts/Riking.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 body {
   background: #07bbdf;
   overflow: hidden;
   /* Pas de scrollbar */
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: "Riking", system-ui, sans-serif;
 }
 
 /* =============================================================================
-   NOUVELLE UI / OVERLAYS
+   NOUVELLE UI / OVERLAYS (FULL SCREEN ASSET)
    ============================================================================= */
 
-#ui-layer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-#ui-logo-container {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-#ui-logo {
-  width: 35vw;
-  max-width: 500px;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-  z-index: 2;
-}
-
-.ui-banniere {
-  position: absolute;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.banniere-img {
+#bg-overlay {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  z-index: 0;
+  z-index: 10;
+  pointer-events: none;
 }
 
-#ui-score-pirate {
-  top: 2vw;
-  left: -1vw;
-  width: 25vw;
-  height: 8vw;
+#overlay-ui {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 11;
+  pointer-events: none;
 }
-#ui-score-pirate .score-text {
-  position: relative;
-  z-index: 1;
-  font-family: "Impact", sans-serif;
-  font-size: 2vw;
+
+.score-text {
+  font-family: "Riking", sans-serif;
+  font-size: 32px;
   font-weight: 900;
   color: #fff;
   text-shadow: 2px 2px 0px #ab4f18, -2px -2px 0 #ab4f18, 2px -2px 0 #ab4f18, -2px 2px 0 #ab4f18;
-  display: flex;
-  align-items: center;
-  gap: 1.5vw;
-  padding-left: 2vw;
-  letter-spacing: 2px;
-}
-#ui-score-pirate .score-number {
-  color: #fff;
-}
-
-#ui-score-monstre {
-  top: 2vw;
-  right: -1vw;
-  width: 28vw;
-  height: 8vw;
-}
-#ui-score-monstre .score-text {
-  position: relative;
-  z-index: 1;
-  font-family: "Impact", sans-serif;
-  font-size: 2vw;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 2px 2px 0px #ab4f18, -2px -2px 0 #ab4f18, 2px -2px 0 #ab4f18, -2px 2px 0 #ab4f18;
-  display: flex;
-  align-items: center;
-  gap: 1.5vw;
-  padding-right: 2vw;
   letter-spacing: 2px;
 }
 
-#ui-timer {
-  position: relative;
-  margin-top: -30px;
-  width: 16vw;
-  height: 6vw;
-  z-index: 1;
+#score-container-pirate {
+  position: absolute;
+  top: 8.5%;
+  left: 9%;
+  transform: translate(-50%, -50%);
 }
+
+#score-container-monstre {
+  position: absolute;
+  top: 8.5%;
+  right: 10%;
+  transform: translate(50%, -50%);
+}
+
+#timer-container {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .timer-text {
-  position: relative;
-  z-index: 1;
-  font-size: 2.2vw;
+  font-family: "Riking", sans-serif;
+  font-size: 40px;
   font-weight: 900;
   color: #fff;
-  font-family: "Impact", sans-serif;
   text-shadow: 2px 2px 0px #5e260a, -1px -1px 0 #5e260a, 1px -1px 0 #5e260a, -1px 1px 0 #5e260a;
   letter-spacing: 2px;
-  margin-bottom: 0.5vw;
 }
+
 #timer.urgent {
   color: #e94560;
   animation: pulse 1s infinite;
 }
 
+#qr-container {
+  position: absolute;
+  bottom: 9%;
+  right: 6%;
+  transform: translate(50%, 50%);
+}
+
+#qr-code img {
+  display: block;
+  width: 90px;
+  height: 90px;
+  border-radius: 8px;
+}
+
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* =============================================================================
@@ -344,14 +324,16 @@ body {
 
 .player {
   position: absolute;
+  left: 0;
+  top: 0;
   z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Transition fluide du mouvement (80ms = temps entre 2 envois de position) */
-  transition: left 0.05s linear, top 0.05s linear;
+  /* Transition GPU via transform (pas de reflow !) */
+  transition: transform 0.05s linear;
+  will-change: transform;
   pointer-events: none;
-  /* Ne bloque pas les clics */
 }
 
 /* Le cercle du joueur */
@@ -532,31 +514,7 @@ body {
   border-color: #e94560;
 }
 
-#ui-qr-box {
-  bottom: 1vw;
-  right: 1vw;
-  width: 25vw;
-  height: 10vw;
-}
 
-#ui-qr-box .qr-content {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding-right: 1.5vw; /* Adjust mostly to center it on the parchment */
-}
-
-/* Le QR code genere est une balise <img> a l'interieur de cette div */
-#qr-code img {
-  display: block;
-  width: 7vw;
-  height: 7vw;
-  border-radius: 8px;
-  margin-right: 20px;
-}
 
 /* =============================================================================
    ANIMATION KO : DEUX ETOILES EN ORBITE
@@ -767,11 +725,10 @@ body {
   }
 
   100% {
-    width: 600px;
-    /* ÉNORME TAILLE (600px !) */
-    height: 600px;
+    width: 300px;
+    height: 300px;
     opacity: 0;
-    /* Devient totalement transparent à la fin */
+    /* Disparaît progressivement */
   }
 }
 

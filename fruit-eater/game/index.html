@@ -5,37 +5,45 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sea Clash - Ecran Géant</title>
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=9" />
 </head>
 
 <body>
-
-  <div id="ui-score-pirate" class="ui-banniere">
-    <img src="ui/banderole-score-pirate.png" alt="Pirate Score" class="banniere-img">
-    <div class="score-text">PIRATES <span id="deaths-pirate" class="score-number">0</span></div>
-  </div>
-
-  <div id="ui-logo-container">
-    <img id="ui-logo" src="ui/Logo.png" alt="Sea Clash Logo">
-    <div id="ui-timer" class="ui-banniere">
-      <img src="ui/banderole-timer.png" alt="Timer" class="banniere-img">
-      <div id="timer" class="timer-text">10:00</div>
-    </div>
-  </div>
-
-  <div id="ui-score-monstre" class="ui-banniere">
-    <img src="ui/banderole-score-monstre.png" alt="Monstre Score" class="banniere-img">
-    <div class="score-text"><span id="deaths-monstre" class="score-number">0</span> MONSTRES</div>
-  </div>
 
   <div id="arena-wrapper">
     <div id="arena">
       <img id="bg-sea" src="ui/Composition_1_1.gif" alt="mer">
       <img id="bg-islands" src="ui/asset_du_fond.png" alt="iles">
 
-
       <div class="passerelle hidden" id="passerelle-top"></div>
       <div class="passerelle hidden" id="passerelle-bottom"></div>
+
+      <!-- Le nouvel overlay UI au-dessus du jeu -->
+      <img id="bg-overlay" src="ui/Asset_du_dessus.png" alt="UI Overlay">
+
+      <!-- Textes positionnés sur l'overlay -->
+      <div id="overlay-ui">
+        <!-- Score Pirate en haut à gauche -->
+        <div id="score-container-pirate">
+          <div class="score-text">PIRATES <span id="deaths-pirate" class="score-number">0</span></div>
+        </div>
+
+        <!-- Timer en haut au centre -->
+        <div id="timer-container">
+          <div id="timer" class="timer-text">10:00</div>
+        </div>
+
+        <!-- Score Monstre en haut à droite -->
+        <div id="score-container-monstre">
+          <div class="score-text"><span id="deaths-monstre" class="score-number">0</span> MONSTRES</div>
+        </div>
+
+        <!-- QR Code en bas à droite -->
+        <div id="qr-container">
+          <div id="qr-code"></div>
+        </div>
+      </div>
+
       <div id="waiting">En attente de joueurs...</div>
     </div>
   </div>
@@ -71,12 +79,6 @@
   </div>
 
   <button id="btn-restart">⟳ Restart</button>
-  <div id="ui-qr-box" class="ui-banniere">
-    <img src="ui/Baderole-qrcode.png" alt="QR Background" class="banniere-img">
-    <div class="qr-content">
-      <div id="qr-code"></div>
-    </div>
-  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="script.js?v=5"></script>

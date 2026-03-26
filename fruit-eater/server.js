@@ -26,10 +26,61 @@ app.get("/", (req, res) => {
 // =============================================================================
 
 const ARENA = { width: 1200, height: 675 }; 
-const ZONES = {
-  pirate: { minX: 100, maxX: 450, minY: 100, maxY: 575 },
-  monstre: { minX: 750, maxX: 1100, minY: 100, maxY: 575 }
+const ADVANCED_ZONES = {
+  pirate: [
+    { x1: 310, y1: 150, x2: 500, y2: 205 },
+    { x1: 76,  y1: 205, x2: 500, y2: 500 },
+    { x1: 360, y1: 440, x2: 550, y2: 580 },
+    { x1: 385, y1: 580, x2: 550, y2: 605 },
+    { x1: 220, y1: 420, x2: 530, y2: 540 },
+    { x1: 220, y1: 205, x2: 530, y2: 330 },
+  ],
+  monstre: [
+    { x1: 700, y1: 170, x2: 940, y2: 540 },
+    { x1: 685, y1: 200, x2: 940, y2: 340 },
+    { x1: 695, y1: 220, x2: 1100, y2: 560 },
+    { x1: 1100, y1: 380, x2: 1145, y2: 550 },
+    { x1: 1130, y1: 400, x2: 1160, y2: 570 },
+    { x1: 670, y1: 440, x2: 965, y2: 570 },
+    { x1: 680, y1: 440, x2: 965, y2: 590 }
+  ]
 };
+
+function isInZone(x, y, team) {
+  const rects = ADVANCED_ZONES[team];
+  if (!rects) return false;
+  return rects.some(r => x >= r.x1 && x <= r.x2 && y >= r.y1 && y <= r.y2);
+}
+
+function getRandomPositionInZone(team) {
+  const rects = ADVANCED_ZONES[team];
+  const totalArea = rects.reduce((sum, r) => sum + ((r.x2 - r.x1) * (r.y2 - r.y1)), 0);
+  let randomArea = Math.random() * totalArea;
+  let pickedRect = rects[rects.length - 1];
+  for (const r of rects) {
+    const area = (r.x2 - r.x1) * (r.y2 - r.y1);
+    if (randomArea < area) { pickedRect = r; break; }
+    randomArea -= area;
+  }
+  return {
+    x: Math.floor(Math.random() * (pickedRect.x2 - pickedRect.x1)) + pickedRect.x1,
+    y: Math.floor(Math.random() * (pickedRect.y2 - pickedRect.y1)) + pickedRect.y1
+  };
+}
+
+function isInPasserelleRect(x, y) {
+  if (x >= 450 && x <= 750) {
+    return PASSERELLES.some(p => y >= p.y - p.height / 2 && y <= p.y + p.height / 2);
+  }
+  return false;
+}
+
+function isPosValid(x, y, player) {
+  const inAppleZone = player.appleReturn && Date.now() < player.appleReturn;
+  const activeZoneKey = inAppleZone ? (player.team === "pirate" ? "monstre" : "pirate") : player.team;
+  if (!abordageActive || inAppleZone) return isInZone(x, y, activeZoneKey);
+  return isInZone(x, y, "pirate") || isInZone(x, y, "monstre") || isInPasserelleRect(x, y);
+}
 
 const SKINS = {
   pirate: ["Perso1", "Perso2", "Perso3", "Perso4", "Perso5", "Perso6", "Perso7", "Perso8", "Perso9", "Perso10"],
@@ -42,9 +93,9 @@ const RESTART_DELAY = 30 * 1000;
 const MAX_GEMS = 8; 
 const PICKUP_DISTANCE = 80; 
 
-const TRAP_COUNT = 3;              
+const TRAP_COUNT = 1; // 1 sable mouvant par zone
 const TRAP_RADIUS = 50;            
-const INACTIVE_DURATION = 5 * 1000; 
+const INACTIVE_DURATION = 2 * 1000; // 2 secondes
 const RED_TRAP_ACTIVE_DURATION = 15 * 1000; // 15 secondes visibles
 const RED_TRAP_HIDDEN_DURATION = 5 * 1000;  // 5 secondes cachées (plus aucune zone)
 
@@ -88,6 +139,41 @@ let abordageTimeLeft = 0;
 let redTrapsActive = false;
 let nextRedTrapChange = 0;
 let currentCountdown = 0;
+let needsBroadcast = false; // flag pour la game loop d'envoi
+
+// =============================================================================
+// GAME LOOP D'ENVOI — 20 FPS fixe (50ms), indépendant des inputs
+// =============================================================================
+const BROADCAST_INTERVAL = 50; // ms  →  20 fps
+
+function buildStateMsg() {
+  return JSON.stringify({
+    type: "state",
+    data: {
+      players,
+      fruits,
+      traps,
+      scores,
+      launchedBombs,
+      deaths,
+      abordageActive,
+      abordageTimeLeft,
+      arena: ARENA,
+      phase: gamePhase,
+      timeLeft: gamePhase === "playing" ? Math.max(0, gameEndTime - Date.now()) : 0,
+      countdown: currentCountdown
+    }
+  });
+}
+
+setInterval(() => {
+  if (!needsBroadcast) return;
+  needsBroadcast = false;
+  const msg = buildStateMsg(); // sérialisation unique
+  wss.clients.forEach(client => {
+    if (client.readyState === client.OPEN) client.send(msg);
+  });
+}, BROADCAST_INTERVAL);
 
 // =============================================================================
 // GESTION DES GEMMES (Pouvoirs)
@@ -107,14 +193,14 @@ function spawnFruit() {
   const color = availableColors[Math.floor(Math.random() * availableColors.length)];
   
   const side = Math.random() < 0.5 ? "pirate" : "monstre";
-  const z = ZONES[side];
+  const { x, y } = getRandomPositionInZone(side);
 
   const now = Date.now();
   fruits[id] = {
     id,
     color: color,
-    x: Math.floor(Math.random() * (z.maxX - z.minX)) + z.minX,
-    y: Math.floor(Math.random() * (z.maxY - z.minY)) + z.minY,
+    x: x,
+    y: y,
     activeAt: now + 2000,        
     expiresAt: now + 12000       
   };
@@ -153,23 +239,22 @@ function checkPickup(player) {
 
         if (isHome) {
           // 1. IL EST CHEZ LUI : On l'envoie à l'abordage chez l'ennemi !
-          const destZone = ZONES[player.team === "pirate" ? "monstre" : "pirate"];
-          player.x = Math.floor(Math.random() * (destZone.maxX - destZone.minX)) + destZone.minX;
+          const destTeam = player.team === "pirate" ? "monstre" : "pirate";
+          const destPos = getRandomPositionInZone(destTeam);
+          player.x = destPos.x;
+          player.y = destPos.y;
           
           player.appleReturn = Date.now() + APPLE_TELEPORT_DURATION; // On lance le chrono de retour automatique (15s)
           console.log(`🪢 ${player.pseudo} a pris une Corde -> TÉLÉPORTÉ CHEZ L'ENNEMI !`);
         } else {
           // 2. IL EST DÉJÀ CHEZ L'ENNEMI : Billet de retour anticipé !
-          const homeZone = ZONES[player.team];
-          player.x = Math.floor(Math.random() * (homeZone.maxX - homeZone.minX)) + homeZone.minX;
+          const homePos = getRandomPositionInZone(player.team);
+          player.x = homePos.x;
+          player.y = homePos.y;
           
           delete player.appleReturn; // On annule le chrono puisqu'il est rentré tout seul !
           console.log(`🪢 ${player.pseudo} a pris une Corde -> RETOUR À LA BASE !`);
         }
-        
-        // On lui donne une position Y aléatoire dans tous les cas
-        const yz = ZONES.pirate;
-        player.y = Math.floor(Math.random() * (yz.maxY - yz.minY)) + yz.minY;
       }
       else if (color === "rouge") {
         const sharkId = "shark_" + Date.now();
@@ -214,12 +299,13 @@ function checkPickup(player) {
           setTimeout(() => {
             if (launchedBombs[bombId]) {
               launchedBombs[bombId].state = "exploded";
-              const EXPLOSION_RADIUS = 200;
+              const EXPLOSION_RADIUS = 100;
               Object.values(players).forEach(p => {
                 const dx = p.x - targetX; 
                 const dy = p.y - targetY;
                 if (Math.sqrt(dx * dx + dy * dy) < EXPLOSION_RADIUS) {
-                  p.inactiveUntil = Date.now() + 5000;
+                  p.inactiveUntil = Date.now() + INACTIVE_DURATION;
+                  p.invincibleUntil = Date.now() + INACTIVE_DURATION + 2000;
                   deaths[p.team]++;
                   console.log(`💥 ${p.pseudo} touché par la bombe !`);
                 }
@@ -245,18 +331,18 @@ function checkPickup(player) {
 // =============================================================================
 
 function respawnRedTrapsForSide(side) {
-  const z = ZONES[side];
   for (let i = 0; i < TRAP_COUNT; i++) {
     const id = "s" + side + i; 
     
     const now = Date.now();
+    const { x, y } = getRandomPositionInZone(side);
     
     traps[id] = {
       id,
       type: "sable",
       sprite: side,  
-      x: Math.floor(Math.random() * (z.maxX - z.minX)) + z.minX,
-      y: Math.floor(Math.random() * (z.maxY - z.minY)) + z.minY,
+      x: x,
+      y: y,
       radius: TRAP_RADIUS,
       inactiveDuration: INACTIVE_DURATION,
       
@@ -321,19 +407,19 @@ function checkTrap(player) {
       if (player.inactiveUntil && Date.now() < player.inactiveUntil) break;
 
       player.inactiveUntil = Date.now() + trap.inactiveDuration;
+      player.invincibleUntil = Date.now() + trap.inactiveDuration + 2000;
       player.respawnProtected = true;
       deaths[player.team]++;
 
-      const teamZone = ZONES[player.team];
       const SCATTER = 120; // Distance max de respawn autour du point de mort
       let safeX, safeY, onTrap, attempts = 0;
       do {
         // Offset aléatoire proche du point de mort
         safeX = player.x + (Math.random() * SCATTER * 2 - SCATTER);
         safeY = player.y + (Math.random() * SCATTER * 2 - SCATTER);
-        // Clamp strict sur les bornes de l'île
-        safeX = Math.max(teamZone.minX, Math.min(teamZone.maxX, safeX));
-        safeY = Math.max(teamZone.minY, Math.min(teamZone.maxY, safeY));
+        safeX = Math.floor(safeX);
+        safeY = Math.floor(safeY);
+        
         onTrap = Object.values(traps).some(t => {
           if (t.type === "line") return Math.abs(safeY - t.y) < t.tolerance;
           if (t.type === "shark") return Math.abs(safeY - t.y) < 75;
@@ -341,10 +427,14 @@ function checkTrap(player) {
         });
         attempts++;
         // Fallback après 20 tentatives : position aléatoire dans la zone
-        if (attempts > 20) {
-          safeX = Math.floor(Math.random() * (teamZone.maxX - teamZone.minX)) + teamZone.minX;
-          safeY = Math.floor(Math.random() * (teamZone.maxY - teamZone.minY)) + teamZone.minY;
-          break;
+        if (attempts > 20 || !isInZone(safeX, safeY, player.team)) {
+          if (attempts > 30) {
+            const pos = getRandomPositionInZone(player.team);
+            safeX = pos.x;
+            safeY = pos.y;
+            break;
+          }
+          onTrap = true; // Force retry if out of bounds
         }
       } while (onTrap);
       player.x = safeX;
@@ -356,59 +446,8 @@ function checkTrap(player) {
 }
 
 function checkPush(player) {
-  if (!abordageActive) return;
-  const inOpponentZone = (player.team === "pirate" && player.x > ARENA.width / 2) ||
-                         (player.team === "monstre"  && player.x < ARENA.width / 2);
-  if (!inOpponentZone) return;
-
-  for (const other of Object.values(players)) {
-    if (other.id === player.id || other.team === player.team) continue;
-    if (other.inactiveUntil && Date.now() < other.inactiveUntil) continue;
-    if (other.invincibleUntil && Date.now() < other.invincibleUntil) continue;
-
-    const dx = player.x - other.x;
-    const dy = player.y - other.y;
-    if (Math.sqrt(dx * dx + dy * dy) < PUSH_DISTANCE) {
-      if (!other.hitCount || other.hitCount === 0) {
-        // Premier coup : devient invincible/clignote pendant 0.5s
-        other.hitCount = 1;
-        other.invincibleUntil = Date.now() + 500;
-        console.log(`💥 ${other.pseudo} touché une fois !`);
-      } else {
-        // Deuxième coup : KO
-        other.hitCount = 0;
-        other.invincibleUntil = 0;
-        other.inactiveUntil = Date.now() + INACTIVE_DURATION;
-        deaths[other.team]++;
-        console.log(`💀 ${other.pseudo} mis KO par ${player.pseudo} !`);
-
-        // Respawn local
-        const teamZone = ZONES[other.team];
-        const SCATTER = 120;
-        let sx, sy, safe, attempts = 0;
-        do {
-          sx = other.x + (Math.random() * SCATTER * 2 - SCATTER);
-          sy = other.y + (Math.random() * SCATTER * 2 - SCATTER);
-          sx = Math.max(teamZone.minX, Math.min(teamZone.maxX, sx));
-          sy = Math.max(teamZone.minY, Math.min(teamZone.maxY, sy));
-          safe = !Object.values(traps).some(t => {
-            if (t.type === "line") return Math.abs(sy - t.y) < t.tolerance;
-            if (t.type === "shark") return Math.abs(sy - t.y) < 75;
-            return Math.sqrt((sx - t.x) ** 2 + ((sy - t.y) * 2) ** 2) < t.radius;
-          });
-          attempts++;
-          if (attempts > 20) {
-            sx = Math.floor(Math.random() * (teamZone.maxX - teamZone.minX)) + teamZone.minX;
-            sy = Math.floor(Math.random() * (teamZone.maxY - teamZone.minY)) + teamZone.minY;
-            break;
-          }
-        } while (!safe);
-        other.x = sx;
-        other.y = sy;
-      }
-      break;
-    }
-  }
+  // Désactivé : les collisions corps à corps sont retirées.
+  // Seul le sabre peut infliger des dégâts.
 }
 
 // =============================================================================
@@ -427,9 +466,9 @@ function startGame() {
   redTrapsActive = true;
 
   for (const player of Object.values(players)) {
-    const teamZone = ZONES[player.team];
-    player.x = Math.floor(Math.random() * (teamZone.maxX - teamZone.minX)) + teamZone.minX;
-    player.y = Math.floor(Math.random() * (teamZone.maxY - teamZone.minY)) + teamZone.minY;
+    const pos = getRandomPositionInZone(player.team);
+    player.x = pos.x;
+    player.y = pos.y;
     player.hitCount = 0;
     player.invincibleUntil = 0;
     delete player.inactiveUntil;
@@ -473,9 +512,11 @@ function startGame() {
 
       if (wasAbordage && !abordageActive) {
         for (const player of Object.values(players)) {
-          const xMin = player.team === "pirate" ? 0 : ARENA.width / 2;
-          const xMax = player.team === "pirate" ? ARENA.width / 2 : ARENA.width;
-          player.x = Math.min(xMax, Math.max(xMin, player.x));
+          if (!isInZone(player.x, player.y, player.team)) {
+            const pos = getRandomPositionInZone(player.team);
+            player.x = pos.x;
+            player.y = pos.y;
+          }
         }
         fillFruits();
       }
@@ -525,9 +566,9 @@ function startGame() {
       for (const player of Object.values(players)) {
         if (player.appleReturn && Date.now() >= player.appleReturn) {
           delete player.appleReturn;
-          const teamZone = ZONES[player.team];
-          player.x = Math.floor(Math.random() * (teamZone.maxX - teamZone.minX)) + teamZone.minX;
-          player.y = Math.floor(Math.random() * (teamZone.maxY - teamZone.minY)) + teamZone.minY;
+          const pos = getRandomPositionInZone(player.team);
+          player.x = pos.x;
+          player.y = pos.y;
         }
       }
       for (const player of Object.values(players)) {
@@ -568,12 +609,7 @@ function broadcast(type, data) {
 }
 
 function broadcastState() {
-  broadcast("state", {
-    players, fruits, traps, scores, launchedBombs, deaths, abordageActive, abordageTimeLeft,
-    arena: ARENA, phase: gamePhase,
-    timeLeft: gamePhase === "playing" ? Math.max(0, gameEndTime - Date.now()) : 0,
-    countdown: currentCountdown
-  });
+  needsBroadcast = true;
 }
 
 wss.on("connection", (ws) => {
@@ -591,13 +627,13 @@ wss.on("connection", (ws) => {
       const countPirate = Object.values(players).filter(p => p.team === "pirate").length;
       const countMonstre  = Object.values(players).filter(p => p.team === "monstre").length;
       const assignedTeam = countPirate <= countMonstre ? "pirate" : "monstre";
-      const z = ZONES[assignedTeam];
       const skinId = SKINS[assignedTeam][Math.floor(Math.random() * SKINS[assignedTeam].length)];
+      const pos = getRandomPositionInZone(assignedTeam);
 
       players[id] = {
         id, pseudo: data.pseudo || "Anonyme", team: assignedTeam, skinId: skinId,
-        x: Math.floor(Math.random() * (z.maxX - z.minX)) + z.minX,
-        y: Math.floor(Math.random() * (z.maxY - z.minY)) + z.minY,
+        x: pos.x,
+        y: pos.y,
         hitCount: 0,
         invincibleUntil: 0
       };
@@ -624,45 +660,37 @@ wss.on("connection", (ws) => {
     if (type === "move" && gamePhase === "playing") {
       const player = players[id];
       if (!player) return; 
-      if (player.inactiveUntil && Date.now() < player.inactiveUntil) return; 
+      if (player.inactiveUntil && Date.now() < player.inactiveUntil) return;
+      // Throttle : max 25 inputs/s par joueur
+      const now = Date.now();
+      if (player.lastMoveAt && now - player.lastMoveAt < 40) return;
+      player.lastMoveAt = now;
 
       const inAppleZone = player.appleReturn && Date.now() < player.appleReturn;
-      const activeZoneKey = inAppleZone
-        ? (player.team === "pirate" ? "monstre" : "pirate")
-        : player.team;
-      const z = ZONES[activeZoneKey];
-
       const oldX = player.x;
       const oldY = player.y;
+      let newX = oldX;
+      let newY = oldY;
 
       if (data && typeof data.x === 'number' && typeof data.y === 'number') {
-        player.x += data.x * SPEED;
-        player.y += data.y * SPEED;
+        newX += data.x * SPEED;
+        newY += data.y * SPEED;
         player.lastDirX = data.x;
         player.lastDirY = data.y;
       } else if (typeof data === 'string') {
         switch (data) {
-          case "up":    player.y -= SPEED; player.lastDirX = 0; player.lastDirY = -1; break;
-          case "down":  player.y += SPEED; player.lastDirX = 0; player.lastDirY = 1; break;
-          case "left":  player.x -= SPEED; player.lastDirX = -1; player.lastDirY = 0; break;
-          case "right": player.x += SPEED; player.lastDirX = 1; player.lastDirY = 0; break;
+          case "up":    newY -= SPEED; player.lastDirX = 0; player.lastDirY = -1; break;
+          case "down":  newY += SPEED; player.lastDirX = 0; player.lastDirY = 1; break;
+          case "left":  newX -= SPEED; player.lastDirX = -1; player.lastDirY = 0; break;
+          case "right": newX += SPEED; player.lastDirX = 1; player.lastDirY = 0; break;
         }
       }
 
-      if (!abordageActive || inAppleZone) {
-        player.x = Math.min(z.maxX, Math.max(z.minX, player.x));
-        player.y = Math.min(z.maxY, Math.max(z.minY, player.y));
-      } else {
-        player.x = Math.min(ZONES.monstre.maxX, Math.max(ZONES.pirate.minX, player.x));
-        player.y = Math.min(z.maxY, Math.max(z.minY, player.y));
-        if (player.x > ZONES.pirate.maxX && player.x < ZONES.monstre.minX) {
-          if (!isInPasserelle(player.y)) {
-            player.y = oldY; 
-            if (!isInPasserelle(player.y)) {
-              player.x = oldX; 
-            }
-          }
-        }
+      if (isPosValid(newX, oldY, player)) {
+        player.x = newX;
+      }
+      if (isPosValid(player.x, newY, player)) {
+        player.y = newY;
       }
 
       checkTrap(player);
@@ -670,7 +698,7 @@ wss.on("connection", (ws) => {
       if (!player.inactiveUntil || Date.now() >= player.inactiveUntil) {
         checkPickup(player);
       }
-      broadcastState();
+      needsBroadcast = true;
     } 
 
     if (type === "dash" && gamePhase === "playing") {
@@ -687,34 +715,23 @@ wss.on("connection", (ws) => {
       if (dirX === 0 && dirY === 0) return;
 
       const oldX = player.x;
-      player.x += dirX * dashForce;
-      player.y += dirY * dashForce;
-
-      const inAppleZone = player.appleReturn && Date.now() < player.appleReturn;
-      const activeZoneKey = inAppleZone ? (player.team === "pirate" ? "monstre" : "pirate") : player.team;
-      const z = ZONES[activeZoneKey];
+      const oldY = player.y;
       
-      if (!abordageActive || inAppleZone) {
-        player.x = Math.min(z.maxX, Math.max(z.minX, player.x));
-        player.y = Math.min(z.maxY, Math.max(z.minY, player.y));
-      } else {
-        player.x = Math.min(ZONES.monstre.maxX, Math.max(ZONES.pirate.minX, player.x));
-        player.y = Math.min(z.maxY, Math.max(z.minY, player.y));
-        if (player.x > ZONES.pirate.maxX && player.x < ZONES.monstre.minX) {
-          if (!isInPasserelle(player.y)) {
-            player.y = oldY; 
-            if (!isInPasserelle(player.y)) {
-              player.x = oldX; 
-            }
-          }
-        }
+      let newX = oldX + dirX * dashForce;
+      let newY = oldY + dirY * dashForce;
+
+      if (isPosValid(newX, oldY, player)) {
+        player.x = newX;
+      }
+      if (isPosValid(player.x, newY, player)) {
+        player.y = newY;
       }
       
       player.dashCooldown = Date.now() + 10000;
       
       checkTrap(player);
       checkPush(player);
-      broadcastState();
+      needsBroadcast = true;
     }
 // ==========================================================
     // 3. BLOC ATTAQUE AU CORPS-À-CORPS (SABRE)
@@ -749,7 +766,8 @@ wss.on("connection", (ws) => {
           const dx = other.x - swordX;
           const dy = other.y - swordY;
           if (Math.sqrt(dx * dx + dy * dy) < SWORD_RADIUS) {
-             other.inactiveUntil = Date.now() + 4000; 
+             other.inactiveUntil = Date.now() + INACTIVE_DURATION; 
+             other.invincibleUntil = Date.now() + INACTIVE_DURATION + 2000;
              deaths[other.team]++;
              other.x = other.team === "pirate" ? 100 : ARENA.width - 100;
              other.y = Math.floor(Math.random() * (ARENA.height - 100)) + 50;
@@ -758,15 +776,15 @@ wss.on("connection", (ws) => {
         }
       });
 
-      // LIGNE AJOUTÉE ICI : Met à jour l'écran géant
-      broadcastState();
+      // Met à jour l'écran géant
+      needsBroadcast = true;
     }
   }); // Fin de ws.on("message")
   ws.on("close", () => {
     if (players[id]) {
       console.log(`${players[id].pseudo} a quitte la partie`);
       delete players[id]; 
-      broadcastState(); 
+      needsBroadcast = true;
     }
   });
 });

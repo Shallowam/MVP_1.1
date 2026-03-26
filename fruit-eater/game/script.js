@@ -80,6 +80,8 @@ const trapElements = {};
 const bombElements = {};
 
 let timeLeft = 0;
+let latestState = null;   // dernier état reçu du serveur
+let rafPending = false;   // est-ce qu'un RAF est déjà en attente ?
 
 function formatTime(ms) {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
@@ -94,12 +96,26 @@ function formatTime(ms) {
 ws.addEventListener("message", (event) => {
   const { type, data } = JSON.parse(event.data);
 
-  // -------------------------------------------------------------------------
-  // ETAT GLOBAL DU JEU
-  // -------------------------------------------------------------------------
+  // ETAT GLOBAL DU JEU — on stocke et on demande un rendu au prochain frame
   if (type === "state") {
-    const { players, fruits, traps, deaths, abordageActive, abordageTimeLeft, phase, countdown } = data;
-    timeLeft = data.timeLeft || 0;
+    latestState = data;
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(renderState);
+    }
+    return;
+  }
+}); // fin du premier handler (state seulement)
+
+// =============================================================================
+// RENDU DOM — appelé via requestAnimationFrame
+// =============================================================================
+function renderState() {
+  rafPending = false;
+  if (!latestState) return;
+  const data = latestState;
+  const { players, fruits, traps, deaths, abordageActive, abordageTimeLeft, phase, countdown } = data;
+  timeLeft = data.timeLeft || 0;
 
     const countdownOverlay = document.getElementById("countdown-overlay");
     const countdownImage = document.getElementById("countdown-image");
@@ -117,7 +133,7 @@ ws.addEventListener("message", (event) => {
       if (newSrc && !countdownImage.src.endsWith(newSrc)) {
         countdownImage.src = newSrc;
         countdownImage.style.animation = 'none';
-        void countdownImage.offsetHeight; /* trigger CSS reflow */
+        void countdownImage.offsetHeight;
         countdownImage.style.animation = null; 
       }
     } else {
@@ -152,7 +168,6 @@ ws.addEventListener("message", (event) => {
       const teamFolder = p.team === 'pirate' ? 'team1' : 'team2';
       const persoName = p.skinId || (p.team === 'pirate' ? 'Perso1' : 'M1');
       
-      // On initialise le joueur s'il n'existe pas
       if (!playerElements[id]) {
         const el = document.createElement("div");
         el.className = "player";
@@ -183,32 +198,21 @@ ws.addEventListener("message", (event) => {
       const lastX = parseFloat(el.dataset.lastX || p.x);
       const lastY = parseFloat(el.dataset.lastY || p.y);
       
-      // ====================================================================
-      // 1. LE CORRECTIF ANTI-LAG (Mémoire de mouvement)
-      // ====================================================================
-      // Si le joueur a bougé, on met à jour son chronomètre de mouvement
       if (Math.abs(p.x - lastX) > 0.5 || Math.abs(p.y - lastY) > 0.5) {
           el.dataset.lastMoveTime = Date.now();
-          
-          // On gère son orientation (Gauche/Droite) EN DEHORS des animations !
           if (p.x > lastX + 0.5) sprite.style.transform = "scaleX(1)"; 
           else if (p.x < lastX - 1) sprite.style.transform = "scaleX(-1)"; 
       }
       
-      // On considère qu'il "marche" s'il a bougé dans les 150 dernières millisecondes.
-      // Ça empêche le serveur de couper l'animation s'il y a un petit lag réseau !
       const lastMoveTime = parseInt(el.dataset.lastMoveTime || 0);
       const isMoving = (Date.now() - lastMoveTime) < 150;
 
       const isAttacking = p.attackEndsAt && Date.now() < p.attackEndsAt;
       const isKO = p.inactiveUntil && p.inactiveUntil > Date.now();
 
-      // ====================================================================
-      // 2. GESTION DU MODE KO
-      // ====================================================================
       if (isKO) {
           if (el.dataset.state !== "ko") {
-              clearInterval(el.attackInterval); // On stoppe l'attaque
+              clearInterval(el.attackInterval);
               sprite.src = `assets/${teamFolder}/${persoName}-KO.png`; 
               sprite.style.width = "66px"; 
               sprite.style.height = "52px";
@@ -217,9 +221,6 @@ ws.addEventListener("message", (event) => {
               el.dataset.state = "ko";
           }
       } 
-      // ====================================================================
-      // 3. GESTION DE L'ATTAQUE (Animation locale 100% fluide)
-      // ====================================================================
       else if (isAttacking) {
           if (el.dataset.state !== "attack") {
               el.dataset.state = "attack";
@@ -228,25 +229,19 @@ ws.addEventListener("message", (event) => {
               sprite.style.height = "68px";
               sprite.style.opacity = "1";
               
-              // On affiche la frame 1 immédiatement
               let frame = 1;
               sprite.src = `assets/${teamFolder}/${persoName}-rush${frame}.png`;
               
-              // Le navigateur gère le clignotement de l'attaque TOUT SEUL en boucle !
               clearInterval(el.attackInterval);
               el.attackInterval = setInterval(() => {
-                  frame = frame === 1 ? 2 : 1; // Alterne entre 1 et 2
+                  frame = frame === 1 ? 2 : 1;
                   sprite.src = `assets/${teamFolder}/${persoName}-rush${frame}.png`;
-              }, 100); // Change d'image toutes les 100ms
+              }, 100);
           }
       }
-      // ====================================================================
-      // 4. GESTION NORMALE (Marche / Immobilité)
-      // ====================================================================
       else {
-          // S'il sortait du mode KO ou Attaque
           if (el.dataset.state === "ko" || el.dataset.state === "attack") {
-              clearInterval(el.attackInterval); // On stoppe le sabre
+              clearInterval(el.attackInterval);
               sprite.src = `assets/${teamFolder}/${persoName}-Stat.png`;
               sprite.style.width = "52px";
               sprite.style.height = "68px";
@@ -260,7 +255,6 @@ ws.addEventListener("message", (event) => {
               const now = Date.now();
               const lastAnimTime = parseInt(el.dataset.lastAnimTime);
               
-              // Fait défiler move1 et move2
               if (now - lastAnimTime > FRAME_RATE) {
                   let frame = parseInt(el.dataset.currentFrame || 0);
                   frame = (frame + 1) % TOTAL_MOVE_FRAMES; 
@@ -278,18 +272,17 @@ ws.addEventListener("message", (event) => {
           }
       }
 
-      // Gestion du clignotement (invincibilité PvP)
+      // Clignotement (invincibilité PvP)
       if (p.invincibleUntil && p.invincibleUntil > Date.now()) {
         el.classList.add("blinking");
       } else {
         el.classList.remove("blinking");
       }
 
-      // On applique enfin les coordonnées
+      // Positionnement via transform (GPU — pas de reflow !)
       el.dataset.lastX = p.x;
       el.dataset.lastY = p.y;
-      el.style.left = p.x - 42 + "px";
-      el.style.top  = p.y - 55 + "px";
+      el.style.transform = `translate(${p.x - 42}px, ${p.y - 55}px)`;
     });
 
     Object.keys(playerElements).forEach((id) => {
@@ -389,10 +382,9 @@ ws.addEventListener("message", (event) => {
       });
     }
 
-    // -- GESTION DES PIEGES (Sables mouvants) --
+    // -- GESTION DES PIEGES --
     if (traps) {
       Object.values(traps).forEach((trap) => {
-        // 1. Création de l'élément s'il n'existe pas
         if (!trapElements[trap.id]) {
           const el = document.createElement("div");
           el.className = "trap";
@@ -403,64 +395,48 @@ ws.addEventListener("message", (event) => {
         const el = trapElements[trap.id];
         const now = Date.now();
         
-        // Ignorer les lasers (line)
         if (trap.type === "line") {
           el.style.display = "none";
           return;
         }
         
-        // --- MANAGE SHARK TRAPS ---
         if (trap.type === "shark") {
           if (!el.dataset.started) {
             el.className = "trap shark";
-            el.style.left = (trap.startX - 250) + "px"; // Centré horizontalement (largeur 500 => -250)
-            el.style.top = (trap.y - 150) + "px"; // Centré verticalement (hauteur 300 => -150)
+            el.style.left = (trap.startX - 250) + "px";
+            el.style.top = (trap.y - 150) + "px";
             
-            // Inverser l'image s'il va vers la droite car le fichier pointe vers la gauche
             if (trap.startX < trap.endX) {
               el.style.transform = "translateY(0) scaleX(-1)";
             } else {
               el.style.transform = "translateY(0) scaleX(1)";
             }
             
-            // Forcer le reflow DOM pour que la transition CSS s'active
             void el.offsetHeight;
-            
-            // Définir la cible
             el.style.left = (trap.endX - 250) + "px";
             el.dataset.started = "true";
           }
-          return; // Ignore logic intended for stationary quicksand traps
+          return;
         }
 
-        // 2. Attribution de la bonne équipe (pour le sprite de base)
         if (trap.sprite === 'pirate') el.classList.add('pirate');
         else el.classList.add('monstre');
         
-        // 3. Positionnement et taille (TRAP_RADIUS, mais écrasé)
         el.style.width = trap.radius * 2 + "px";
-        el.style.height = trap.radius + "px"; // Hauteur divisée par 2 ("écrasé")
+        el.style.height = trap.radius + "px";
         el.style.left = trap.x - trap.radius + "px";
-        el.style.top  = trap.y - (trap.radius / 2) + "px"; // Centrage vertical ajusté
+        el.style.top  = trap.y - (trap.radius / 2) + "px";
         
-        // ===========================================================
-        // 4. GESTION DES CLIGNOTEMENTS (Warning 1.5s)
-        // ===========================================================
-        el.classList.remove("warning"); // On nettoie par défaut
+        el.classList.remove("warning");
         
-        // Avertissement avant apparition (pendant les 1.5 premières secondes)
         if (now < trap.activeAt) {
           el.classList.add("warning");
         } 
-        // Avertissement avant disparition (pendant les 1.5 dernières secondes)
         else if (now >= (trap.expireAt - 1500)) {
           el.classList.add("warning");
         }
-        
-        // (Le serveur supprimera le piège de la liste quand now >= trap.expireAt)
       });
 
-      // 5. Nettoyage des pièges supprimés par le serveur
       Object.keys(trapElements).forEach((id) => {
         if (!traps[id]) {
           trapElements[id].remove();
@@ -468,10 +444,18 @@ ws.addEventListener("message", (event) => {
         }
       });
     }
-  }
+} // fin renderState
+
+
+// =============================================================================
+// RECEPTION DES MESSAGES DU SERVEUR (gameOver)
+// =============================================================================
+ws.addEventListener("message", (event) => {
+  const { type, data } = JSON.parse(event.data);
+  if (type === "state") return; // géré par renderState/RAF
 
   // -------------------------------------------------------------------------
-  // 3. FIN DE PARTIE
+  // FIN DE PARTIE
   // -------------------------------------------------------------------------
   if (type === "gameOver") {
     const { deaths: finalDeaths, winner, restartIn } = data;
@@ -496,10 +480,72 @@ ws.addEventListener("message", (event) => {
 
     let remaining = Math.ceil(restartIn / 1000); 
     restartCountdown.textContent = remaining;
-    const countdownInterval = setInterval(() => {
+    const countdownIntervalGO = setInterval(() => {
       remaining--;
       if (restartCountdown) restartCountdown.textContent = Math.max(0, remaining);
-      if (remaining <= 0) clearInterval(countdownInterval); 
+      if (remaining <= 0) clearInterval(countdownIntervalGO); 
     }, 1000);
   }
+});
+
+// =============================================================================
+// DEBUG VISUEL DES ZONES (Touche "d")
+// =============================================================================
+
+const DEBUG_ZONES = {
+  pirate: [
+    { x1: 310, y1: 150, x2: 500, y2: 205 },
+    { x1: 76,  y1: 205, x2: 500, y2: 500 },
+    { x1: 360, y1: 440, x2: 550, y2: 580 },
+    { x1: 385, y1: 580, x2: 550, y2: 605 },
+    { x1: 220, y1: 420, x2: 530, y2: 540 },
+    { x1: 220, y1: 205, x2: 530, y2: 330 },
+  ],
+  monstre: [
+    { x1: 700, y1: 170, x2: 940, y2: 540 },
+    { x1: 685, y1: 200, x2: 940, y2: 340 },
+    { x1: 695, y1: 220, x2: 1100, y2: 560 },
+    { x1: 1100, y1: 380, x2: 1145, y2: 550 },
+    { x1: 1130, y1: 400, x2: 1160, y2: 570 },
+    { x1: 670, y1: 440, x2: 965, y2: 570 },
+    { x1: 680, y1: 440, x2: 965, y2: 590 }
+  ]
+};
+
+let debugMode = false;
+const debugEls = [];
+
+function toggleDebug() {
+  debugMode = !debugMode;
+  if (debugMode) {
+    const colors = { pirate: "rgba(233,69,96,0.35)", monstre: "rgba(78,168,222,0.35)" };
+    const borders = { pirate: "#e94560", monstre: "#4ea8de" };
+    for (const [team, rects] of Object.entries(DEBUG_ZONES)) {
+      rects.forEach((r, i) => {
+        const el = document.createElement("div");
+        el.style.cssText = `
+          position:absolute;
+          left:${r.x1}px; top:${r.y1}px;
+          width:${r.x2 - r.x1}px; height:${r.y2 - r.y1}px;
+          background:${colors[team]};
+          border:2px dashed ${borders[team]};
+          z-index:4; pointer-events:none;
+          box-sizing:border-box;
+        `;
+        const label = document.createElement("span");
+        label.textContent = `${team} #${i}`;
+        label.style.cssText = "color:white;font-size:12px;font-weight:bold;padding:2px 4px;";
+        el.appendChild(label);
+        document.getElementById("arena").appendChild(el);
+        debugEls.push(el);
+      });
+    }
+  } else {
+    debugEls.forEach(el => el.remove());
+    debugEls.length = 0;
+  }
+}
+
+document.addEventListener("keydown", e => { 
+  if (e.key === "d") toggleDebug(); 
 });
