@@ -220,22 +220,27 @@ function checkPickup(player) {
 function respawnRedTrapsForSide(side) {
   const xBase = side === "pirate" ? 0 : ARENA.width / 2;
   for (let i = 0; i < TRAP_COUNT; i++) {
-    const id = "r" + side + i;
+    const id = "s" + side + i; // ID unique (ex: spirate1, smonstre1)
+    
+    // On définit le moment d'apparition
+    const now = Date.now();
+    
     traps[id] = {
       id,
-      type: "rouge", 
+      type: "sable", // On change le type pour "sable"
+      sprite: side,  // Définit si c'est 'pirate' ou 'monstre'
       x: Math.floor(Math.random() * (ARENA.width / 2 - 100)) + xBase + 50,
       y: Math.floor(Math.random() * (ARENA.height - 100)) + 50,
       radius: TRAP_RADIUS,
-      inactiveDuration: INACTIVE_DURATION
-      // Les zones rouges sont actives tout le temps !
+      inactiveDuration: INACTIVE_DURATION,
+      
+      // GESTION DU TEMPS (Clignotements de 3s)
+      // Il devient mortel 3s après sa création (pendant l'avertissement)
+      activeAt: now + 3000, 
+      // Il disparaît 10s après être devenu actif (durée totale 13s)
+      expireAt: now + 13000
     };
   }
-}
-
-function spawnTraps() {
-  respawnRedTrapsForSide("pirate");
-  respawnRedTrapsForSide("monstre");
 }
 
 function isInPasserelle(y) {
@@ -256,6 +261,7 @@ function checkTrap(player) {
 
   if (player.inactiveUntil && Date.now() < player.inactiveUntil) return;
   for (const trap of Object.values(traps)) {
+    if (trap.activeAt && Date.now() < trap.activeAt) continue;
     if (trap.activeAt && Date.now() < trap.activeAt) continue; 
     if (trap.deactivateAt && Date.now() >= trap.deactivateAt) continue; 
 
