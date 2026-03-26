@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini-jeu WebSocket – Affichage principal</title>
+  <link rel="stylesheet" href="game.css">
+</head>
+<body>
+
+<!-- Indicateur de statut WebSocket -->
+<div id="connection-status" class="disconnected">Déconnecté</div>
+
+<!-- Tableau des scores -->
+<div id="scoreboard">
+  <h3>Scores</h3>
+  <div id="score-list"></div>
+</div>
+
+<!-- =====================================================================
+     CHARGEMENT DES BIBLIOTHÈQUES (ordre important !)
+     1. p5.js     → bibliothèque graphique (canvas 2D, boucle setup/draw)
+     2. planck.js → moteur physique (Box2D en JavaScript)
+     3. p5play.js → surcouche qui connecte p5.js et planck.js
+                    Doit être chargé APRÈS les deux autres !
+     ===================================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/planck@1/dist/planck.min.js"></script>
+<script src="game.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/p5play@3/p5play.js"></script>
+</body>
+</html>

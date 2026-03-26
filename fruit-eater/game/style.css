@@ -1,0 +1,617 @@
+/* =============================================================================
+   ECRAN DE JEU — style.css (affiche sur le projecteur / TV)
+   ============================================================================= */
+
+/* --- Reset CSS --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.hidden {
+  display: none !important;
+}
+
+body {
+  background: #07bbdf;
+  overflow: hidden; /* Pas de scrollbar */
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* =============================================================================
+   HUD (Head-Up Display)
+   Barre d'info fixee en haut de l'ecran : score rouge | timer | score bleu
+   ============================================================================= */
+
+#hud {
+  position: fixed;
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%); /* Centrer horizontalement */
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  z-index: 10; /* Au-dessus de tout */
+}
+
+/* Bloc de score d'une equipe */
+.hud-team {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #eee;
+  background: #1a1a2ecc; /* Fond semi-transparent */
+  padding: 0.5rem 1.25rem;
+  border-radius: 12px;
+  backdrop-filter: blur(8px); /* Effet de flou derriere */
+}
+
+/* Compteur de morts dans le HUD */
+.hud-deaths {
+  margin-left: 0.5rem;
+  opacity: 0.75;
+  font-size: 1rem;
+}
+
+/* Timer au centre du HUD */
+#timer {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #eee;
+  background: #1a1a2ecc;
+  padding: 0.4rem 1.5rem;
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  font-variant-numeric: tabular-nums; /* Chiffres a largeur fixe (pas de "saut") */
+}
+
+/* Timer en mode urgent : rouge + clignotant (derniers 30 secondes) */
+#timer.urgent {
+  color: #e94560;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Petit rond colore a cote du nom d'equipe */
+.team-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.team-dot.rouge {
+  background: #e94560;
+}
+
+.team-dot.bleu {
+  background: #4ea8de;
+}
+
+/* =============================================================================
+   ARENA (zone de jeu)
+   ============================================================================= */
+
+/* Wrapper qui centre l'arene dans l'espace disponible */
+#arena-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: calc(100vh - 80px); /* Toute la hauteur moins l'espace du HUD */
+  margin-top: 80px;
+}
+
+/* L'arene elle-meme : taille fixe de 1200x800, redimensionnee via transform: scale() */
+#arena {
+  position: relative; /* Necessaire pour que les enfants en position: absolute se placent dedans */
+  width: 1200px;
+  height: 800px;
+  background: linear-gradient(to right, #1e0f18 50%, #0e1826 50%);
+  border-radius: 16px;
+  border: 2px solid #333;
+  overflow: hidden;
+  transform-origin: center center; /* Le scale se fait depuis le centre */
+}
+
+/* Passerelles sur la ligne centrale (ouvertes pendant l'abordage) */
+.passerelle {
+  position: absolute;
+  left: calc(50% - 10px);
+  width: 20px;
+  background: rgba(255, 200, 0, 0.25);
+  border-left: 3px solid rgba(255, 200, 0, 0.6);
+  border-right: 3px solid rgba(255, 200, 0, 0.6);
+  pointer-events: none;
+  z-index: 2;
+}
+
+#passerelle-top    { top: 73px;  height: 120px; }
+#passerelle-bottom { top: 607px; height: 120px; }
+
+/* Banniere ABORDAGE ! */
+#abordage-banner {
+  position: fixed;
+  top: 6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 20px orange, 0 2px 8px rgba(0,0,0,0.8);
+  z-index: 20;
+  pointer-events: none;
+  animation: pulse 0.8s infinite;
+  white-space: nowrap;
+}
+
+/* Ligne de separation centrale */
+#arena::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.2) 0px,
+    rgba(255,255,255,0.2) 16px,
+    transparent 16px,
+    transparent 32px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Zones des equipes */
+.zone {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 6rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.zone.rouge {
+  left: 60px;
+  color: #e94560;
+  opacity: 0.08;
+}
+
+.zone.bleu {
+  right: 60px;
+  color: #4ea8de;
+  opacity: 0.08;
+}
+
+/* Message "En attente de joueurs..." affiche quand personne n'est connecte */
+#waiting {
+  position: absolute;
+  inset: 0; /* Raccourci pour top:0 right:0 bottom:0 left:0 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #555;
+  font-weight: 600;
+}
+
+/* =============================================================================
+   JOUEURS
+   Chaque joueur est une div positionnee en absolu dans l'arene.
+   Structure : un cercle colore + le pseudo en dessous.
+   ============================================================================= */
+
+.player {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Transition fluide du mouvement (80ms = temps entre 2 envois de position) */
+  transition: left 0.05s linear, top 0.05s linear;
+  pointer-events: none; /* Ne bloque pas les clics */
+}
+
+/* Le cercle du joueur */
+.player-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid white;
+}
+
+/* Couleurs par equipe avec un halo lumineux (box-shadow) */
+.player-dot.rouge {
+  background: #e94560;
+  box-shadow: 0 0 12px #e9456066;
+}
+
+.player-dot.bleu {
+  background: #4ea8de;
+  box-shadow: 0 0 12px #4ea8de66;
+}
+
+/* Pseudo affiche sous le cercle */
+.player-name {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #eee;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); /* Ombre pour lisibilite */
+  white-space: nowrap;
+}
+
+
+/* =============================================================================
+   ECRAN DE FIN DE PARTIE (overlay)
+   S'affiche par-dessus tout quand la partie se termine.
+   ============================================================================= */
+
+/* L'overlay couvre tout l'ecran avec un fond sombre semi-transparent */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: #0f0f23ee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100; /* Par-dessus tout, y compris le HUD */
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+/* Carte centrale avec les resultats */
+.gameover-card {
+  text-align: center;
+  color: #eee;
+}
+
+.gameover-card h1 {
+  font-size: 3rem;
+  margin-bottom: 2rem;
+}
+
+/* Scores finaux : Rouge VS Bleu */
+.gameover-scores {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.gameover-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.gameover-team .team-dot {
+  width: 20px;
+  height: 20px;
+}
+
+/* Le nombre de points en tres gros */
+.gameover-points {
+  font-size: 4rem;
+  font-weight: 900;
+}
+
+/* Couleur du score selon l'equipe */
+.gameover-team.rouge .gameover-points {
+  color: #e94560;
+}
+
+.gameover-team.bleu .gameover-points {
+  color: #4ea8de;
+}
+
+/* "VS" entre les deux equipes */
+.gameover-vs {
+  font-size: 1.5rem;
+  font-weight: 800;
+  opacity: 0.4;
+}
+
+/* L'equipe gagnante est legerement agrandie */
+.gameover-team.winner {
+  transform: scale(1.15);
+}
+
+/* Texte "Prochaine partie dans Xs" */
+#gameover-restart {
+  font-size: 1.2rem;
+  opacity: 0.6;
+  margin-top: 1rem;
+}
+
+/* =============================================================================
+   QR CODE
+   Affiche en bas a droite de l'ecran pour que les joueurs puissent scanner
+   et rejoindre la partie facilement.
+   ============================================================================= */
+
+#btn-restart {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: #1a1a2ecc;
+  color: #eee;
+  border: 2px solid #444;
+  border-radius: 12px;
+  padding: 0.5rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+#btn-restart:hover {
+  background: #e9456033;
+  border-color: #e94560;
+}
+
+#qr-box {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: #1a1a2ecc;
+  padding: 1rem;
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+/* Le QR code genere est une balise <img> a l'interieur de cette div */
+#qr-code img {
+  display: block;
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+}
+
+#qr-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #eee;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* =============================================================================
+   ANIMATION KO : DEUX ETOILES EN ORBITE
+   Quand un joueur est KO, deux etoiles tournent autour de sa tete.
+   ============================================================================= */
+
+/* Le conteneur central (le point pivot de l'orbite) */
+.ko-effects {
+  position: absolute;
+  top: -10px;   /* Hauteur du centre de l'orbite au-dessus de la tete. Ajuste si besoin. */
+  left: 50%;    /* Centre horizontalement */
+  transform: translateX(-50%); /* Ajustement centrage */
+  width: 0; height: 0; /* Le conteneur lui-meme est un point invisible */
+  z-index: 10;  /* Au-dessus du pseudo */
+  pointer-events: none; /* Ne bloque pas les clics */
+}
+
+/* Style commun aux deux etoiles */
+.ko-star {
+  position: absolute;
+  width: 20px;  /* Taille d'une etoile */
+  height: 20px;
+  top: -10px;   /* Centrer verticalement l'etoile par rapport au pivot */
+  left: -10px;  /* Centrer horizontalement l'etoile par rapport au pivot */
+  /* Animation 'orbit' : 1.5s pour un tour complet, lineaire, infini */
+  animation: orbit 1.5s linear infinite;
+}
+
+/* La deuxieme etoile a un delai negatif de la moitie de la duree. */
+/* Cela la place exactement a l'oppose de la premiere sur le cercle. */
+.ko-star-2 {
+  animation-delay: -0.75s;
+}
+
+/* DEFINITION DE L'ORBITE (Double Rotation) */
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(30px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(30px) rotate(-360deg); }
+}
+
+/* =============================================================================
+   NOUVEAU : LOOK MAGIQUE DES GEMMES (Halo + Plus Grosses)
+   ============================================================================= */
+
+.gem-container {
+  position: absolute;
+  width: 70px;  
+  height: 70px;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none; 
+}
+
+.gem-halo {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  right: -20px;
+  bottom: -20px;
+  border-radius: 50%;
+  filter: blur(2px); 
+  z-index: 1; 
+}
+
+.halo-bombe {
+  background: radial-gradient(circle, rgba(50, 255, 100, 0.4) 0%, rgba(50, 255, 100, 0) 70%);
+}
+
+.halo-rouge {
+  background: radial-gradient(circle, rgba(255, 50, 50, 0.4) 0%, rgba(255, 50, 50, 0) 70%);
+}
+
+/* Le halo de la Corde de Téléportation */
+.halo-corde {
+  background: radial-gradient(circle, rgba(200, 180, 120, 0.6) 0%, rgba(200, 180, 120, 0) 70%);
+}
+
+.gem-image {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain; 
+  z-index: 2; 
+}
+
+.gem-warning {
+  pointer-events: none;
+}
+.gem-warning .gem-image {
+  animation: gemGrayscalePulse 1s infinite alternate;
+}
+.gem-warning .gem-halo {
+  opacity: 0.1; 
+}
+
+@keyframes gemGrayscalePulse {
+  from { opacity: 0.3; filter: grayscale(100%); }
+  to   { opacity: 0.7; filter: grayscale(50%); }
+}
+
+.gem-active {
+  animation: gemFloat 2s ease-in-out infinite;
+}
+
+@keyframes gemFloat {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+  50%      { transform: translate(-50%, -50%) translateY(-20px); } 
+}
+
+.gem-burst {
+  animation: gemExplode 0.4s forwards cubic-bezier(0.1, 0.9, 0.2, 1);
+  pointer-events: none;
+}
+
+@keyframes gemExplode {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: brightness(2); }
+  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; filter: brightness(1); } 
+}
+/* =============================================================================
+   NOUVEAU : VISUELS DES BOMBES LANCÉES & EXPLOSIONS
+   ============================================================================= */
+
+/* La bombe en vol */
+.bombe-splash {
+  position: absolute;
+  width: 60px; 
+  height: 60px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 5; 
+  pointer-events: none;
+  
+  /* NOUVEAU : Glissade parfaitement fluide sur 1.5s ! */
+  transition: left 1.5s linear, top 1.5s linear;
+  
+  /* NOUVEAU : Rotation très rapide sur elle-même */
+  animation: bombe-spin 0.4s linear infinite;
+}
+
+@keyframes bombe-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* L'élément d'explosion (utilisera explosion.png) */
+.explosion {
+  position: absolute;
+  transform: translate(-50%, -50%); /* Centré parfaitement */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 6; /* Au-dessus de tout */
+  pointer-events: none;
+  
+  /* C'est ici qu'on déclenche l'animation */
+  animation: explosion-large 1s ease-out forwards;
+}
+
+/* L'animation : s'agrandit énormément et disparaît */
+@keyframes explosion-large {
+  0% {
+    width: 0px; /* Part du centre (taille 0) */
+    height: 0px;
+    opacity: 1; /* Bien visible */
+  }
+  50% {
+    opacity: 1; /* Reste visible pendant qu'elle s'agrandit */
+  }
+  100% {
+    width: 600px; /* ÉNORME TAILLE (600px !) */
+    height: 600px;
+    opacity: 0; /* Devient totalement transparent à la fin */
+  }
+}
+@keyframes spin-sabre {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* =============================================================================
+   SABLES MOUVANTS (ZONES DE DANGER AVEC SPRITES)
+   ============================================================================= */
+.trap {
+  position: absolute;
+  z-index: 2; /* Sous les joueurs */
+  pointer-events: none;
+  
+  /* L'image de sable mouvant utilise la taille définie par le serveur (trap.radius) */
+  background-size: auto;
+  background-position: center;
+}
+
+/* Sprite de sable mouvant pour les Pirates (SMx-pirate.png) */
+.trap.pirate {
+  background-image: url('assets/SM1-pirate.png'); /* Par défaut, SM1 */
+}
+
+/* Sprite de sable mouvant pour les Monstres (SMx-monstre.png) */
+.trap.monstre {
+  background-image: url('assets/SM1-monstre.png'); /* Par défaut, SM1 */
+}
+
+/* Classe d'avertissement (clignotement 3s avant apparition et disparition) */
+.trap.warning {
+  /* On applique un filtre pour montrer que la zone n'est pas encore "active" */
+  filter: grayscale(100%) brightness(1.5);
+  /* L'animation fait clignoter rapidement */
+  animation: trap-warning-blink 0.2s infinite alternate;
+}
+
+@keyframes trap-warning-blink {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}

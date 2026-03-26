@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport : essentiel pour les mobiles – empêche le zoom automatique -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Manette – Mini-jeu WebSocket</title>
+  <link rel="stylesheet" href="controller.css">
+</head>
+<body>
+
+  <h1>🎮 Manette</h1>
+
+  <!-- =====================================================================
+       ÉCRAN 1 : CONNEXION
+       Affiché au chargement. L'utilisateur entre son pseudo puis clique Spawn.
+       ===================================================================== -->
+  <div id="login-screen">
+    <input type="text"
+           id="pseudo-input"
+           placeholder="Ton pseudo"
+           maxlength="20"
+           autocomplete="off">
+    <button class="btn btn-spawn" id="spawn-btn">Spawn !</button>
+    <div class="status status-disconnected" id="status-login">Connexion...</div>
+  </div>
+
+  <!-- =====================================================================
+       ÉCRAN 2 : CONTRÔLES
+       Affiché après le spawn. Contient les boutons d'action.
+       ===================================================================== -->
+  <div id="control-screen">
+    <div id="player-name"></div>
+    <button class="btn btn-dash"    id="dash-btn">⚡ DASH</button>
+    <button class="btn btn-reverse" id="reverse-btn">🔄 REVERSE</button>
+    <button class="btn btn-respawn" id="respawn-btn" style="display: none;">🧬 RESPAWN</button>
+    <div class="status status-connected" id="status-control">Connecté</div>
+  </div>
+
+  <script src="controller.js"></script>
+</body>
+</html>

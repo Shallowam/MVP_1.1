@@ -1,0 +1,406 @@
+/* =============================================================================
+   PIRATE CONTROLLER — style.css (Sea Clash Edition - Correction Portrait)
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Pirata+One&display=swap');
+
+:root {
+  --color-rouge: #ff3c3c;
+  --color-rouge-deaths: #8b0000;
+  --color-parchemin: #f5e4c3; /* Fond beige mock-up image_13.png */
+  --font-pirate: 'Pirata One', cursive;
+  --font-pirate-num: 'Cinzel Decorative', cursive;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--font-pirate-num);
+  font-size: 16px;
+  background-color: var(--color-parchemin);
+}
+
+.hidden { display: none !important; }
+
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* =============================================================================
+   ÉCRAN 1 : CONNEXION (Sea Clash Portrait - image_13.png)
+   ============================================================================= */
+#screen-join {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 30px;
+  background-color: var(--color-parchemin);
+}
+
+/* Logo (content_file_10.png) */
+.sc-logo {
+  width: 350px;
+  height: 180px;
+  background-image: url('assets/logo-manette.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+}
+
+/* Titre "NOM DU JOUEUR" */
+.sc-label {
+  font-family: Arial, sans-serif;
+  color: #000;
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin: 0 0 10px 0;
+  z-index: 10; /* Devant le gouvernail */
+}
+
+/* Groupe Input : Gouvernail + Parchemin */
+.sc-input-group {
+  position: relative;
+  width: 100%; /* Occupe toute la largeur pour centrer librement */
+  max-width: 400px;
+  height: 250px; /* Plus grand espace pour le gouvernail imposant */
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; /* Parchemin en bas de la zone */
+  margin-bottom: 50px; 
+}
+
+/* --- CORRECTION GOUVERNAIL PORTRAIT (image_13.png & content_file_11.jpg) --- */
+.sc-helm-deco {
+  position: absolute;
+  /* On le remonte énormément pour forcer le croppage en haut */
+  top: -100px; 
+  left: 50%;
+  transform: translateX(-50%);
+  /* On le rend très grand pour qu'il soit imposant */
+  width: 350px; 
+  height: 350px;
+  background-image: url('assets/gouvernail-manette.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1; /* Derrière le parchemin */
+  opacity: 0.8; /* Légèrement transparent mock-up image_13.png */
+  mix-blend-mode: multiply; /* Enlève le fond blanc du JPG */
+}
+
+/* Parchemin de saisie (content_file_12.png) */
+.sc-input-banner {
+  position: relative;
+  width: 300px;
+  height: 80px;
+  background-image: url('assets/banniere-manette.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 5; /* Devant le gouvernail */
+  filter: drop-shadow(0px 5px 8px rgba(0,0,0,0.4));
+}
+
+.sc-input-banner input {
+  width: 220px;
+  height: 40px;
+  background-color: #f2f2f2;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 1.4rem;
+  font-family: Arial, sans-serif;
+  color: #333;
+  text-align: center;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.sc-input-banner input:focus {
+  outline: none;
+  background-color: #fff;
+}
+
+/* Bouton de Connexion image (content_file_9.png) */
+.sc-btn-banner {
+  width: 320px;
+  height: 100px;
+  background-image: url('assets/connexion-manette.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5));
+  transition: transform 0.1s, opacity 0.3s;
+  z-index: 10;
+}
+
+.sc-btn-banner:active {
+  transform: scale(0.95);
+}
+
+/* CORRECTION : Style pour griser le bouton pendant le chargement */
+.sc-btn-banner.loading {
+  opacity: 0.5;
+  pointer-events: none; /* Désactive les clics */
+}
+
+/* =============================================================================
+   ÉCRAN 2 : LA MANETTE PIRATE (Reste inchangé)
+   ============================================================================= */
+#screen-controller {
+  background-image: url('assets/fond-manette.png'); 
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+  width: 100%;
+  height: 100%;
+}
+
+#gouvernail-deco {
+  position: absolute;
+  top: -60px; 
+  left: 50%;
+  transform: translateX(-50%);
+  width: 250px;
+  height: 250px;
+  background-image: url('assets/gouvernail-manette.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1; 
+  mix-blend-mode: screen; 
+}
+
+.hud-top {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 15px;
+  z-index: 5; 
+  pointer-events: none;
+}
+
+.banniere-side {
+  width: 150px;
+  height: 60px;
+  background-image: url('assets/banniere-manette.png');
+  background-size: 100% 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.5rem;
+  gap: 10px;
+  filter: drop-shadow(0px 4px 5px rgba(0,0,0,0.4));
+}
+
+.hud-deaths-banni { color: var(--color-rouge-deaths); }
+.hud-timer { color: #d84800; }
+
+.banniere-center {
+  width: 280px;
+  height: 80px;
+  background-image: url('assets/banniere-manette.png');
+  background-size: 100% 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 15px; 
+  filter: drop-shadow(0px 4px 5px rgba(0,0,0,0.5));
+}
+
+#player-pseudo {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #000;
+  margin-top: -5px;
+  font-family: Arial, sans-serif;
+}
+
+#player-team {
+  font-size: 1.2rem;
+  font-weight: 900;
+  font-family: Arial, sans-serif;
+}
+#player-team.monstre { color: #0055ff; } 
+#player-team.pirate { color: #cc0000; }  
+
+.joystick-zone {
+  position: absolute;
+  bottom: 20px;
+  left: 40px;
+  width: 220px;
+  height: 220px;
+  z-index: 10;
+}
+
+#joystick-base {
+  width: 100%;
+  height: 100%;
+  background-color: rgba(100, 150, 255, 0.2); 
+  border: 4px solid rgba(100, 150, 255, 0.4);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#joystick-knob {
+  width: 100px;
+  height: 100px;
+  background-image: url('assets/joystick-manette.png'); 
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 50%;
+  transition: transform 0.05s linear;
+}
+
+.buttons-zone {
+  position: absolute;
+  bottom: 20px;
+  right: 40px;
+  width: 300px;
+  height: 220px;
+  z-index: 10;
+}
+
+#btn-dash-container {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+}
+
+#btn-dash {
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  background-image: url('assets/dash-manette.png'); 
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.3));
+  transition: filter 0.3s;
+}
+
+#btn-dash:disabled { filter: grayscale(100%) brightness(50%); }
+
+#btn-dash-cooldown-text {
+  position: absolute;
+  font-size: 4rem;
+  font-weight: 900;
+  color: white;
+  text-shadow: 0 0 10px black;
+  pointer-events: none;
+  z-index: 21;
+}
+
+.button-taper-base {
+  position: absolute;
+  bottom: 20px;
+  right: 0;
+  width: 180px;
+  height: 180px;
+  background-color: rgba(255, 100, 100, 0.2); 
+  border: 4px solid rgba(255, 100, 100, 0.4);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  filter: drop-shadow(0 8px 15px rgba(0,0,0,0.5));
+  z-index: 15;
+}
+
+#btn-taper {
+  width: 140px;
+  height: 140px;
+  background-color: transparent;
+  background-image: url('assets/smash-manette.png'); 
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+#abordage-notif {
+  position: absolute;
+  top: 150px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-pirate);
+  background: var(--color-rouge);
+  color: white;
+  padding: 10px 30px;
+  border-radius: 10px;
+  font-size: 2.2rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+  border: 4px solid white;
+  z-index: 100;
+}
+
+#screen-inactive {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(233, 69, 96, 0.6); 
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 200; 
+  pointer-events: all; 
+}
+
+#inactive-label {
+  font-family: var(--font-pirate);
+  font-size: 4.5rem;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.8);
+  margin-bottom: 20px;
+}
+
+#inactive-countdown {
+  font-family: var(--font-pirate-num);
+  font-size: 12rem; 
+  font-weight: 900;
+  color: #ffcccc;
+  text-shadow: 0 0 30px rgba(255,0,0,1), 0 0 5px #000;
+}
