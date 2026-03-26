@@ -92,11 +92,33 @@ ws.addEventListener("message", (event) => {
   // ETAT GLOBAL DU JEU
   // -------------------------------------------------------------------------
   if (type === "state") {
-    const { players, fruits, traps, deaths, abordageActive, abordageTimeLeft, phase } = data;
+    const { players, fruits, traps, deaths, abordageActive, abordageTimeLeft, phase, countdown } = data;
     timeLeft = data.timeLeft || 0;
 
-    if (phase === "playing") {
+    const countdownOverlay = document.getElementById("countdown-overlay");
+    const countdownImage = document.getElementById("countdown-image");
+
+    if (phase === "countdown") {
       screenGameover.classList.add("hidden");
+      countdownOverlay.classList.remove("hidden");
+      
+      let newSrc = "";
+      if (countdown === 3) newSrc = "assets/3.png";
+      else if (countdown === 2) newSrc = "assets/2.png";
+      else if (countdown === 1) newSrc = "assets/1.png";
+      else if (countdown === 0) newSrc = "assets/feu-a-volonte.png";
+      
+      if (newSrc && !countdownImage.src.endsWith(newSrc)) {
+        countdownImage.src = newSrc;
+        countdownImage.style.animation = 'none';
+        void countdownImage.offsetHeight; /* trigger CSS reflow */
+        countdownImage.style.animation = null; 
+      }
+    } else {
+      countdownOverlay.classList.add("hidden");
+      if (phase === "playing") {
+        screenGameover.classList.add("hidden");
+      }
     }
 
     const ids = Object.keys(players);
@@ -285,7 +307,7 @@ ws.addEventListener("message", (event) => {
         const gemImg = document.createElement("img");
         gemImg.className = "gem-image";
         if (g.color === "bombe") gemImg.src = "assets/bombe.png";
-        else if (g.color === "rouge") gemImg.src = "assets/gemme-rouge.png";
+        else if (g.color === "rouge") gemImg.src = "assets/shark-icone.png";
         else gemImg.src = "assets/corde.png";
         container.appendChild(gemImg);
 
@@ -372,6 +394,30 @@ ws.addEventListener("message", (event) => {
         if (trap.type === "line") {
           el.style.display = "none";
           return;
+        }
+        
+        // --- MANAGE SHARK TRAPS ---
+        if (trap.type === "shark") {
+          if (!el.dataset.started) {
+            el.className = "trap shark";
+            el.style.left = (trap.startX - 250) + "px"; // Centré horizontalement (largeur 500 => -250)
+            el.style.top = (trap.y - 150) + "px"; // Centré verticalement (hauteur 300 => -150)
+            
+            // Inverser l'image s'il va vers la droite car le fichier pointe vers la gauche
+            if (trap.startX < trap.endX) {
+              el.style.transform = "translateY(0) scaleX(-1)";
+            } else {
+              el.style.transform = "translateY(0) scaleX(1)";
+            }
+            
+            // Forcer le reflow DOM pour que la transition CSS s'active
+            void el.offsetHeight;
+            
+            // Définir la cible
+            el.style.left = (trap.endX - 250) + "px";
+            el.dataset.started = "true";
+          }
+          return; // Ignore logic intended for stationary quicksand traps
         }
 
         // 2. Attribution de la bonne équipe (pour le sprite de base)

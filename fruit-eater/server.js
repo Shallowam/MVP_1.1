@@ -71,11 +71,13 @@ let restartTime = 0;
 let nextId = 1; 
 let nextFruitId = 1; 
 let gameInterval = null; 
+let countdownInterval = null;
 let restartTimeout = null; 
 let abordageActive = false;  
 let abordageTimeLeft = 0;    
 let redTrapsActive = false;
 let nextRedTrapChange = 0;
+let currentCountdown = 0;
 
 // =============================================================================
 // GESTION DES GEMMES (Pouvoirs)
@@ -151,18 +153,24 @@ function checkPickup(player) {
         player.y = Math.floor(Math.random() * (ARENA.height - 100)) + 50;
       }
       else if (color === "rouge") {
-        const lineId = "line_" + Date.now();
-        traps[lineId] = {
-          id: lineId,
-          type: "line",
+        const sharkId = "shark_" + Date.now();
+        const startX = player.team === "pirate" ? -300 : ARENA.width + 300;
+        const endX = player.team === "pirate" ? ARENA.width + 300 : -300;
+        
+        traps[sharkId] = {
+          id: sharkId,
+          type: "shark",
           y: fruitY,
+          startX: startX,
+          endX: endX,
           targetTeam: opponentTeam,
-          tolerance: LINE_TRAP_TOLERANCE,
-          inactiveDuration: 5 * 1000,
-          deactivateAt: Date.now() + LINE_TRAP_DURATION,
+          duration: 10000,
+          startTime: Date.now(),
+          deactivateAt: Date.now() + 10000,
+          inactiveDuration: 5 * 1000
         };
         scores[player.team]++;
-        console.log(`${player.pseudo} a pris un Laser !`);
+        console.log(`${player.pseudo} a invoqué un Requin Géant !`);
       } 
       else {
         const potentialTargets = Object.values(players).filter(p => p.team === opponentTeam);
@@ -273,6 +281,16 @@ function checkTrap(player) {
     let hit = false;
     if (trap.type === "line") {
       hit = player.team === trap.targetTeam && Math.abs(player.y - trap.y) < trap.tolerance;
+    } else if (trap.type === "shark") {
+      if (player.team === trap.targetTeam && Date.now() >= trap.startTime) {
+        const elapsed = Date.now() - trap.startTime;
+        const progress = Math.min(1, elapsed / trap.duration);
+        const currentX = trap.startX + (trap.endX - trap.startX) * progress;
+        // Hitbox rectangulaire : 500x300 centrée sur currentX, trap.y
+        if (Math.abs(player.x - currentX) < 250 && Math.abs(player.y - trap.y) < 150) {
+            hit = true;
+        }
+      }
     } else {
       const dx = player.x - trap.x;
       const dy = player.y - trap.y;
@@ -292,6 +310,7 @@ function checkTrap(player) {
         safeY = Math.floor(Math.random() * (ARENA.height - 100)) + 50;
         onTrap = Object.values(traps).some(t => {
           if (t.type === "line") return Math.abs(safeY - t.y) < t.tolerance;
+          if (t.type === "shark") return Math.abs(safeY - t.y) < 75; // Éviter la ligne du requin
           return Math.sqrt((safeX - t.x) ** 2 + ((safeY - t.y) * 2) ** 2) < t.radius;
         });
       } while (onTrap);
@@ -344,13 +363,8 @@ function startGame() {
   fillFruits();
   traps = {};
   launchedBombs = {}; 
-  // Initialisation du cycle des zones rouges
   spawnTraps(); 
   redTrapsActive = true;
-  nextRedTrapChange = Date.now() + RED_TRAP_ACTIVE_DURATION;
-
-  gamePhase = "playing";
-  gameEndTime = Date.now() + GAME_DURATION; 
 
   for (const player of Object.values(players)) {
     player.x = player.team === "pirate"
@@ -360,10 +374,29 @@ function startGame() {
     delete player.inactiveUntil;
   }
 
-  console.log("--- Partie lancee ! ---");
+  // --- PHASE DE COMPTE À REBOURS ---
+  gamePhase = "countdown";
+  currentCountdown = 3;
+  console.log("--- Compte à Rebours ---");
   broadcastState(); 
 
-  gameInterval = setInterval(() => {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    currentCountdown--;
+    if (currentCountdown >= 0) {
+      broadcastState();
+    } else {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      
+      // Lancement réel de la partie
+      gamePhase = "playing";
+      gameEndTime = Date.now() + GAME_DURATION; 
+      nextRedTrapChange = Date.now() + RED_TRAP_ACTIVE_DURATION;
+      console.log("--- Partie lancee ! ---");
+      broadcastState();
+
+      gameInterval = setInterval(() => {
     if (Date.now() >= gameEndTime) {
       endGame();
     } else {
@@ -387,7 +420,7 @@ function startGame() {
       }
       
       for (const [id, trap] of Object.entries(traps)) {
-        if (trap.type === "line" && Date.now() >= trap.deactivateAt) delete traps[id];
+        if ((trap.type === "line" || trap.type === "shark") && Date.now() >= trap.deactivateAt) delete traps[id];
       }
       // =======================================================
       // NOUVEAU : NETTOYAGE DES OBJETS PÉRIMÉS (10 secondes)
@@ -443,6 +476,8 @@ function startGame() {
       broadcastState();
     }
   }, 1000);
+    }
+  }, 1000);
 }
 
 function endGame() {
@@ -477,6 +512,7 @@ function broadcastState() {
     players, fruits, traps, scores, launchedBombs, deaths, abordageActive, abordageTimeLeft,
     arena: ARENA, phase: gamePhase,
     timeLeft: gamePhase === "playing" ? Math.max(0, gameEndTime - Date.now()) : 0,
+    countdown: currentCountdown
   });
 }
 
@@ -517,7 +553,9 @@ wss.on("connection", (ws) => {
     if (type === "restart") {
       if (restartTimeout) clearTimeout(restartTimeout);
       if (gameInterval) clearInterval(gameInterval);
+      if (countdownInterval) clearInterval(countdownInterval);
       gameInterval = null;
+      countdownInterval = null;
       startGame();
     }
 
