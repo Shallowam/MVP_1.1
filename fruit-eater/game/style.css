@@ -1,3 +1,49 @@
+#top-killers-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 2.5%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: rgba(20, 20, 40, 0.85);
+  border-radius: 18px;
+  padding: 8px 32px;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px #0008;
+  font-family: 'Riking', sans-serif;
+  font-size: 1.1rem;
+  color: #fff;
+  pointer-events: none;
+}
+
+.top-killers-content {
+  display: flex;
+  gap: 24px;
+}
+
+.top-killer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.1em;
+  font-weight: 700;
+  min-width: 60px;
+  justify-content: center;
+  text-shadow: 1px 1px 2px #000a;
+}
+
+.top-killer:first-child {
+  font-size: 1.2em;
+  color: #ffd700;
+}
+.top-killer:nth-child(2) {
+  color: #c0c0c0;
+}
+.top-killer:nth-child(3) {
+  color: #cd7f32;
+}
 /* =============================================================================
    ECRAN DE JEU — style.css (affiche sur le projecteur / TV)
    ============================================================================= */

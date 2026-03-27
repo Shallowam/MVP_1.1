@@ -119,9 +119,7 @@ imagesToPreload.forEach(src => {
 // =============================================================================
 // REFERENCES AUX ELEMENTS HTML
 // =============================================================================
-document.getElementById("btn-force-end").addEventListener("click", () => {
-  ws.send(JSON.stringify({ type: "forceEnd" }));
-});
+
 
 const arena = document.getElementById("arena");
 const arenaWrapper = document.getElementById("arena-wrapper");
@@ -200,6 +198,32 @@ function renderState() {
   rafPending = false;
   if (!latestState) return;
   const data = latestState;
+
+  // --- TOP KILLERS BANDEAU ---
+  const topKillersBanner = document.getElementById("top-killers-banner");
+  const killer1 = document.getElementById("killer-1");
+  const killer2 = document.getElementById("killer-2");
+  const killer3 = document.getElementById("killer-3");
+  if (data.players) {
+    // On suppose que chaque player a un champ 'kills' (sinon, à adapter)
+    const playersArr = Object.values(data.players);
+    playersArr.sort((a, b) => (b.kills || 0) - (a.kills || 0));
+    const tops = playersArr.slice(0, 3);
+    if (tops.length > 0 && (tops[0].kills || 0) > 0) {
+      topKillersBanner.classList.remove("hidden");
+      [killer1, killer2, killer3].forEach((el, i) => {
+        if (tops[i]) {
+          el.textContent = `#${i+1} ${tops[i].pseudo} (${tops[i].kills||0})`;
+        } else {
+          el.textContent = "";
+        }
+      });
+    } else {
+      topKillersBanner.classList.add("hidden");
+    }
+  } else {
+    topKillersBanner.classList.add("hidden");
+  }
   const { players, fruits, traps, deaths, abordageActive, abordageTimeLeft, phase, countdown } = data;
   timeLeft = data.timeLeft || 0;
 
